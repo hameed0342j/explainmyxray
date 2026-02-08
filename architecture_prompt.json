@@ -1,0 +1,873 @@
+{
+  "metadata": {
+    "title": "ExplainMyXray v2 — Technical Architecture",
+    "subtitle": "Chest X-ray Analysis with Disease Localization using Fine-tuned MedGemma-4B",
+    "version": "2.0",
+    "environment": "Local — RTX 5080 12 GB VRAM (Windows/Linux, VS Code)",
+    "theme": {
+      "background": "linear-gradient(135deg, #0a0f1a 0%, #101d2e 40%, #0b2948 100%)",
+      "cardBackground": "rgba(255, 255, 255, 0.04)",
+      "cardBorder": "rgba(100, 200, 255, 0.12)",
+      "accentGradient": "linear-gradient(90deg, #00b4d8, #48cae4, #90e0ef)",
+      "accentSecondary": "linear-gradient(90deg, #f72585, #b5179e, #7209b7)",
+      "textPrimary": "#e8f0fe",
+      "textSecondary": "#8eafc4",
+      "successGreen": "#2dc653",
+      "warningAmber": "#ffb703",
+      "dangerRed": "#ef233c"
+    }
+  },
+  "sections": [
+    {
+      "id": 1,
+      "title": "Libraries & Frameworks",
+      "icon": "📚",
+      "color": "#2dc653",
+      "gradient": "linear-gradient(135deg, #0f9b58, #2dc653)",
+      "description": "Core ML stack — official MedGemma fine-tuning toolchain",
+      "items": [
+        {
+          "name": "Transformers",
+          "logo": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg",
+          "logoAlt": "🤗",
+          "version": "≥4.52.0",
+          "useCase": "AutoModelForImageTextToText, AutoProcessor, pipeline API",
+          "whyUsed": "Only library supporting MedGemma's chat template + multimodal inference",
+          "alternatives": ["vLLM (inference only)", "TGI (serving only)", "Custom loop"]
+        },
+        {
+          "name": "TRL (Transformer RL)",
+          "logo": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg",
+          "logoAlt": "🏋️",
+          "version": "≥0.17.0",
+          "useCase": "SFTTrainer + SFTConfig — official MedGemma fine-tuning method",
+          "whyUsed": "SFTTrainer handles chat template tokenization, label masking, and LoRA integration in one API. Google's official fine-tuning notebook uses TRL, not vanilla Trainer",
+          "alternatives": ["HF Trainer (lacks chat support)", "Axolotl (extra abstraction)", "Custom loop"]
+        },
+        {
+          "name": "PEFT",
+          "logo": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg",
+          "logoAlt": "🔧",
+          "version": "≥0.15.0",
+          "useCase": "LoRA / QLoRA parameter-efficient fine-tuning",
+          "whyUsed": "Trains <1% of parameters → 4B model fits in 12 GB with optimizer states",
+          "alternatives": ["Full fine-tuning (needs 80+ GB)", "DoRA", "Prefix-Tuning"]
+        },
+        {
+          "name": "BitsAndBytes",
+          "logo": "https://raw.githubusercontent.com/TimDettmers/bitsandbytes/main/docs/source/_static/bitsandbytes-logo.png",
+          "logoAlt": "🔢",
+          "version": "≥0.45.0",
+          "useCase": "4-bit NF4 quantization with double quantization",
+          "whyUsed": "Compresses 4B model from ~8 GB to ~2.5 GB → leaves room for gradients + activations in 12 GB",
+          "alternatives": ["GPTQ (static)", "AWQ (needs calibration)", "GGUF (CPU inference)"]
+        },
+        {
+          "name": "Accelerate",
+          "logo": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg",
+          "logoAlt": "🚀",
+          "version": "≥1.5.0",
+          "useCase": "Automatic device placement, mixed precision orchestration",
+          "whyUsed": "device_map='auto' handles 4-bit model layer placement on single GPU",
+          "alternatives": ["Manual .to(device)", "DeepSpeed (multi-GPU)", "FSDP"]
+        },
+        {
+          "name": "PyTorch",
+          "logo": "https://pytorch.org/assets/images/pytorch-logo.png",
+          "logoAlt": "🔥",
+          "version": "2.x + CUDA 12.4",
+          "useCase": "Core deep learning framework",
+          "whyUsed": "HuggingFace ecosystem is PyTorch-native. BFloat16 + fused AdamW require PyTorch 2.x",
+          "alternatives": ["TensorFlow", "JAX/Flax"]
+        },
+        {
+          "name": "Pillow",
+          "logo": "https://python-pillow.org/images/pillow-logo.png",
+          "logoAlt": "🖼️",
+          "version": "≥10.0",
+          "useCase": "Load X-ray PNGs, convert to RGB, resize for SigLIP encoder",
+          "whyUsed": "MedGemma processor expects PIL.Image input. Handles DICOM-converted PNGs",
+          "alternatives": ["OpenCV (overkill)", "imageio", "torchvision.io"]
+        },
+        {
+          "name": "Matplotlib",
+          "logo": "https://matplotlib.org/_static/images/logo2.svg",
+          "logoAlt": "📊",
+          "version": "latest",
+          "useCase": "Anatomical region overlay visualization with bounding boxes",
+          "whyUsed": "Renders side-by-side X-ray + localization overlay with color-coded patches",
+          "alternatives": ["Plotly (interactive)", "OpenCV (programmatic)"]
+        },
+        {
+          "name": "Pandas",
+          "logoAlt": "🐼",
+          "version": "latest",
+          "useCase": "PadChest CSV parsing, label extraction, difficulty scoring",
+          "whyUsed": "160K-row CSV with nested list columns needs robust parsing (ast.literal_eval + pandas)",
+          "alternatives": ["Polars (faster)", "csv.reader (manual)"]
+        },
+        {
+          "name": "Scikit-learn",
+          "logo": "https://scikit-learn.org/stable/_static/scikit-learn-logo-small.png",
+          "logoAlt": "🔬",
+          "version": "latest",
+          "useCase": "Evaluation metrics, data splitting utilities",
+          "whyUsed": "Per-finding precision/recall/F1 calculation with micro-averaging",
+          "alternatives": ["torchmetrics", "evaluate library"]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Model Selection",
+      "icon": "🧠",
+      "color": "#4361ee",
+      "gradient": "linear-gradient(135deg, #4361ee, #7209b7)",
+      "description": "Why MedGemma-4B-it — the first open medical VLM with domain-specific vision",
+      "items": [
+        {
+          "name": "MedGemma-4B-it",
+          "logo": "https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg",
+          "logoAlt": "🩺",
+          "version": "google/medgemma-4b-it",
+          "useCase": "Medical image → structured radiology report with disease localization",
+          "whyUsed": "Only open VLM with a medical-specific SigLIP vision encoder pre-trained on CXR, dermatology, ophthalmology, and histopathology. Zero-shot medical accuracy far exceeds general VLMs",
+          "selected": true,
+          "specs": {
+            "parameters": "4 billion",
+            "architecture": "Medical SigLIP (vision) + Gemma 3 (decoder)",
+            "inputResolution": "896×896",
+            "pretraining": "CXR, Dermatology, Ophthalmology, Histopathology",
+            "chatTemplate": "System → User (image + text) → Assistant",
+            "vramRequired": "~2.5 GB (4-bit NF4)",
+            "license": "Requires HuggingFace license acceptance"
+          }
+        },
+        {
+          "name": "PaliGemma-3B (v1)",
+          "logoAlt": "❌",
+          "useCase": "General-purpose VLM",
+          "whyNotUsed": "No medical pre-training. Learns X-rays from scratch → wastes capacity. Deprecated API (PaliGemmaForConditionalGeneration). v1 memorized templates instead of learning radiology",
+          "selected": false
+        },
+        {
+          "name": "GPT-4V / GPT-4o",
+          "logoAlt": "❌",
+          "useCase": "Commercial multimodal AI",
+          "whyNotUsed": "Closed-source, no fine-tuning, expensive API, data privacy concerns for medical images",
+          "selected": false
+        },
+        {
+          "name": "LLaVA-Med-7B",
+          "logoAlt": "❌",
+          "useCase": "Open medical VLM",
+          "whyNotUsed": "7B too large for 12 GB VRAM even with 4-bit. General CLIP vision encoder, not medical-specific",
+          "selected": false
+        },
+        {
+          "name": "BiomedCLIP",
+          "logoAlt": "❌",
+          "useCase": "Medical image embeddings",
+          "whyNotUsed": "Vision-only, no text generation. Would need a separate decoder",
+          "selected": false
+        },
+        {
+          "name": "CheXagent",
+          "logoAlt": "❌",
+          "useCase": "CXR-specific agent",
+          "whyNotUsed": "Not truly open weights, limited fine-tuning support, narrow scope",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Quantization & Memory Budget",
+      "icon": "💾",
+      "color": "#b5179e",
+      "gradient": "linear-gradient(135deg, #f72585, #b5179e)",
+      "description": "Fitting a 4B medical VLM into 12 GB VRAM with QLoRA",
+      "memoryBudget": {
+        "totalVRAM": "12 GB (RTX 5080)",
+        "breakdown": [
+          { "component": "Base model (4-bit NF4)", "usage": "~2.5 GB" },
+          { "component": "LoRA adapters (bf16)", "usage": "~0.5 GB" },
+          { "component": "Optimizer states (AdamW)", "usage": "~1.5 GB" },
+          { "component": "Activations (batch=1 + grad ckpt)", "usage": "~3.0 GB" },
+          { "component": "CUDA overhead + KV cache", "usage": "~1.5 GB" },
+          { "component": "Headroom / safety", "usage": "~3.0 GB" }
+        ],
+        "totalUsed": "~9.0 GB",
+        "utilization": "75%"
+      },
+      "items": [
+        {
+          "name": "4-bit NF4 Quantization",
+          "logoAlt": "4️⃣",
+          "config": "load_in_4bit=True, bnb_4bit_quant_type='nf4'",
+          "useCase": "Compress model weights 4×",
+          "whyUsed": "NormalFloat4 preserves weight distribution shape → minimal accuracy loss. 4B model: ~8 GB → ~2.5 GB",
+          "memoryImpact": "75% weight reduction",
+          "alternatives": ["8-bit (50% reduction, worse perf)", "FP16 (needs 48 GB)", "GPTQ (static, needs calibration)"]
+        },
+        {
+          "name": "Double Quantization",
+          "logoAlt": "2️⃣",
+          "config": "bnb_4bit_use_double_quant=True",
+          "useCase": "Quantize the quantization scale factors themselves",
+          "whyUsed": "Saves ~200 MB with negligible quality loss",
+          "memoryImpact": "~200 MB additional savings"
+        },
+        {
+          "name": "BFloat16 Compute + Storage",
+          "logoAlt": "⚡",
+          "config": "bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_quant_storage=torch.bfloat16",
+          "useCase": "Precision for forward/backward passes",
+          "whyUsed": "RTX 5080 (Blackwell, SM ≥8.0) has native BF16 tensor cores. BF16 has 8-bit exponent → no gradient overflow vs FP16's 5-bit exponent",
+          "v1Comparison": "v1 used FP16 on T4 → occasional loss spikes. v2 uses BF16 → rock-stable training",
+          "alternatives": ["FP16 (risk overflow on 4B model)", "FP32 (2× VRAM, no benefit)"]
+        },
+        {
+          "name": "Gradient Checkpointing",
+          "logoAlt": "♻️",
+          "config": "gradient_checkpointing=True, use_reentrant=False",
+          "useCase": "Recompute activations during backward pass instead of storing",
+          "whyUsed": "Cuts activation memory by ~60%. Critical for fitting batch=1 on 12 GB. ~20% speed hit is worth it",
+          "memoryImpact": "~60% activation reduction"
+        },
+        {
+          "name": "TF32 Math Mode",
+          "logoAlt": "🔢",
+          "config": "torch.backends.cuda.matmul.allow_tf32 = True",
+          "useCase": "Use TensorFloat32 for matrix multiplications",
+          "whyUsed": "3× faster matmuls with ~FP16 accuracy. Free speed on Ampere+/Blackwell",
+          "memoryImpact": "None (speed only)"
+        },
+        {
+          "name": "Expandable Segments",
+          "logoAlt": "📐",
+          "config": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "useCase": "Reduce CUDA memory fragmentation",
+          "whyUsed": "Prevents OOM from fragmented allocations during long training runs",
+          "memoryImpact": "Reduces fragmentation waste"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "LoRA Configuration",
+      "icon": "🎛️",
+      "color": "#f77f00",
+      "gradient": "linear-gradient(135deg, #f77f00, #fcbf49)",
+      "description": "High-capacity LoRA tuned for ≥95% accuracy on 174 radiographic findings",
+      "items": [
+        {
+          "name": "Rank (r=32)",
+          "logoAlt": "📐",
+          "config": "lora_r=32",
+          "useCase": "Dimension of low-rank adaptation matrices",
+          "whyUsed": "r=32 provides 2× capacity vs v1's r=16. Needed for 174 findings + 104 locations. Still fits 12 GB",
+          "formula": "W' = W + BA where B∈ℝ^(d×32), A∈ℝ^(32×k)",
+          "v1Comparison": "v1: r=16 → under-adapted, confused similar findings. v2: r=32 → enough capacity for fine-grained medical classification",
+          "alternatives": ["r=16 (less capacity)", "r=64 (more VRAM, diminishing returns)", "r=128 (overkill)"]
+        },
+        {
+          "name": "Alpha (α=64)",
+          "logoAlt": "⚖️",
+          "config": "lora_alpha=64",
+          "useCase": "Scaling factor for LoRA update magnitude",
+          "whyUsed": "α=2×r amplifies adaptation signal. Effective scale = α/r = 64/32 = 2×",
+          "formula": "ΔW_effective = (α/r) × BA = 2 × BA"
+        },
+        {
+          "name": "Target: all-linear",
+          "logoAlt": "🎯",
+          "config": "target_modules='all-linear'",
+          "useCase": "Apply LoRA to every linear layer in the model",
+          "whyUsed": "Official MedGemma approach. Adapts attention (q/k/v/o), FFN (gate/up/down), and projection layers. Much broader than v1's attention-only approach",
+          "v1Comparison": "v1: attention layers only → limited adaptation. v2: all-linear → adapts entire model behavior",
+          "alternatives": ["Attention only (v1, insufficient)", "Manual layer selection"]
+        },
+        {
+          "name": "Saved Modules",
+          "logoAlt": "💎",
+          "config": "modules_to_save=['lm_head', 'embed_tokens']",
+          "useCase": "Fully train (not LoRA) the input/output embedding layers",
+          "whyUsed": "Medical vocabulary differs from general text. Full embedding retraining lets the model learn domain-specific token representations",
+          "alternatives": ["LoRA on embeddings (less flexible)", "Freeze all (poor domain adaptation)"]
+        },
+        {
+          "name": "Dropout (0.05)",
+          "logoAlt": "💧",
+          "config": "lora_dropout=0.05",
+          "useCase": "Regularization within LoRA layers",
+          "whyUsed": "Light 5% dropout prevents LoRA weight overfitting. Medical X-rays have consistent patterns — don't over-regularize",
+          "alternatives": ["0.0 (risk overfitting)", "0.1 (standard)", "0.2 (too aggressive for structured data)"]
+        },
+        {
+          "name": "Task Type",
+          "logoAlt": "📝",
+          "config": "task_type='CAUSAL_LM'",
+          "useCase": "Marks model as autoregressive decoder",
+          "whyUsed": "MedGemma generates reports left-to-right. CAUSAL_LM ensures correct LoRA layer targeting"
+        }
+      ],
+      "summary": {
+        "trainableParams": "~100M (<2.5%)",
+        "frozenParams": "~4B (>97.5%)",
+        "adapterSize": "~200 MB",
+        "trainingVRAM": "~9 GB total"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Dataset — BIMCV PadChest",
+      "icon": "🏥",
+      "color": "#00b4d8",
+      "gradient": "linear-gradient(135deg, #0077b6, #00b4d8, #48cae4)",
+      "description": "Largest single-institution chest X-ray dataset with radiologist annotations",
+      "items": [
+        {
+          "name": "BIMCV PadChest Full",
+          "logoAlt": "🫁",
+          "source": "BIMCV (Biomedical Imaging at Valencia, Spain)",
+          "size": "160,000+ images (~1 TB)",
+          "labels": "174 radiographic findings (English), 104 anatomical locations (English)",
+          "useCase": "Primary training dataset — real radiologist annotations at scale",
+          "whyUsed": "Largest publicly available CXR dataset with per-finding anatomical localization. Labels in English. 27% physician-verified, 73% NLP-extracted",
+          "selected": true,
+          "specs": {
+            "images": "160,000+ CXR in PNG format",
+            "findings": "174 unique radiographic findings",
+            "locations": "104 anatomical location tags",
+            "reports": "Spanish (radiologist-written)",
+            "labeling": "RNN_model (73%) + Physician (27%)",
+            "views": "PA, AP, L, AP_horizontal, COSTAL, LL",
+            "storage": "~1 TB total"
+          }
+        },
+        {
+          "name": "Drive Folder Structure",
+          "logoAlt": "📂",
+          "source": "Google Drive: /content/drive/MyDrive/Padchest/",
+          "structure": "images/0/ through images/37/ (38 numbered sub-folders)",
+          "csvMapping": "ImageDir column → sub-folder number",
+          "useCase": "Stream images from Drive during training (no local copy needed)",
+          "whyUsed": "1 TB dataset on 300 GB local disk → stream from Drive on-demand"
+        },
+        {
+          "name": "Label Format",
+          "logoAlt": "🏷️",
+          "csvColumn": "LabelsLocalizationsBySentence",
+          "format": "['finding1', 'loc location1', 'finding2', 'loc location2']",
+          "parsing": "'loc ' prefix → anatomical location, everything else → finding",
+          "examples": [
+            "['aortic elongation', 'loc aortic', 'COPD signs']",
+            "['cardiomegaly', 'loc cardiac', 'pleural effusion', 'loc costophrenic angle']",
+            "['normal']"
+          ]
+        },
+        {
+          "name": "Key Finding Categories",
+          "logoAlt": "🔍",
+          "topFindings": [
+            "normal", "aortic elongation", "COPD signs", "cardiomegaly",
+            "costophrenic angle blunting", "infiltrates", "pleural effusion",
+            "laminar atelectasis", "pulmonary fibrosis", "nodule",
+            "pneumonia", "consolidation", "interstitial pattern",
+            "vascular hilar enlargement", "pacemaker", "rib fracture"
+          ]
+        }
+      ],
+      "v1Comparison": {
+        "v1Dataset": "~11K images (NIH sample + Kaggle Pneumonia)",
+        "v1Problem": "Tiny dataset → loss 2.9→0.05 in 253 steps = pure memorization",
+        "v2Dataset": "160K+ images, 174 findings, 104 locations",
+        "v2Improvement": "15× more data, 12× more label categories, anatomical localization"
+      },
+      "notUsed": [
+        { "name": "CheXpert", "reason": "Requires Stanford DUA, no localization" },
+        { "name": "MIMIC-CXR", "reason": "Requires PhysioNet credentialing + IRB" },
+        { "name": "NIH ChestX-ray14", "reason": "No localization data, 42 GB" },
+        { "name": "Kaggle Pneumonia", "reason": "Binary labels only, too simple" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Data Pipeline & Preprocessing",
+      "icon": "⚙️",
+      "color": "#e63946",
+      "gradient": "linear-gradient(135deg, #e63946, #f77f00)",
+      "description": "Multi-stage preprocessing: parse → validate → structure → curriculum sort → chat template",
+      "items": [
+        {
+          "name": "CSV Parsing (safe_parse_list)",
+          "logoAlt": "📋",
+          "useCase": "Parse string-encoded Python lists from CSV columns",
+          "whyUsed": "PadChest labels are stored as string: \"['finding1', 'finding2']\". ast.literal_eval handles nested lists, edge cases, NaN values",
+          "handlesEdgeCases": ["Empty strings", "NaN values", "'[]' strings", "Nested lists", "Non-list values"]
+        },
+        {
+          "name": "Finding/Location Split",
+          "logoAlt": "🔀",
+          "function": "split_findings_locations()",
+          "useCase": "Separate findings from anatomical locations using 'loc ' prefix",
+          "whyUsed": "PadChest mixes findings and locations in one column. Split enables structured output: FINDINGS + LOCATIONS sections",
+          "example": "Input: ['pneumonia', 'loc right lower lobe'] → findings=['pneumonia'], locations=['right lower lobe']"
+        },
+        {
+          "name": "Image Path Resolution",
+          "logoAlt": "📁",
+          "function": "resolve_image_path()",
+          "useCase": "Map CSV rows to actual image files in numbered sub-folders",
+          "whyUsed": "PadChest images live in /images/0/ through /images/37/. ImageDir column gives the sub-folder number. Includes fallback scan if ImageDir is missing",
+          "pathFormat": "{img_dir}/{ImageDir}/{ImageID}"
+        },
+        {
+          "name": "Chat Template Formatting",
+          "logoAlt": "💬",
+          "format": "System → User (image + prompt) → Assistant (structured report)",
+          "useCase": "Convert each sample to MedGemma's expected chat format",
+          "whyUsed": "MedGemma requires apply_chat_template() for proper tokenization. System prompt sets radiologist role, user provides X-ray + view info, assistant gives structured report",
+          "template": {
+            "system": "Expert radiologist AI for chest X-ray interpretation",
+            "user": "Image + 'Analyze this chest X-ray (view: PA). Provide FINDINGS, LOCATIONS, IMPRESSION'",
+            "assistant": "FINDINGS: [list]\nLOCATIONS: [regions]\nIMPRESSION: [summary]"
+          }
+        },
+        {
+          "name": "Structured Output Format",
+          "logoAlt": "📄",
+          "useCase": "Multi-field radiology report for each X-ray",
+          "whyUsed": "Structured output is parseable for evaluation (extract findings → compute P/R/F1) and for visualization (extract locations → overlay on image)",
+          "v1Comparison": "v1: 'The X-ray shows {label}' templates. v2: Real structured reports",
+          "fields": [
+            "FINDINGS: List of detected conditions with anatomical context",
+            "LOCATIONS: Comma-separated anatomical regions",
+            "IMPRESSION: Clinical summary with recommendations"
+          ]
+        },
+        {
+          "name": "Curriculum Learning",
+          "logoAlt": "📈",
+          "function": "compute_difficulty()",
+          "useCase": "Sort training data easy → hard based on complexity score",
+          "whyUsed": "Model learns 'normal' first, then single findings, then multi-finding cases with localization. Improves convergence and accuracy on complex cases",
+          "scoring": {
+            "numFindings": "+2 per finding",
+            "numLocations": "+1 per location",
+            "rareFindings": "+3 per rare finding (count ≤ 2)"
+          },
+          "alternatives": ["Random order (v1)", "Anti-curriculum (hard→easy)", "Balanced sampling"]
+        },
+        {
+          "name": "Train / Val / Test Split",
+          "logoAlt": "📊",
+          "config": "90% / 5% / 5%",
+          "useCase": "Training, validation (early stopping), evaluation",
+          "whyUsed": "90% train maximizes data for learning. 5% val is enough for loss monitoring with early stopping. 5% test for final accuracy measurement",
+          "v1Comparison": "v1: 80/10/10 → wasted 10% on underused val. v2: 90/5/5 → more training data"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Training Hyperparameters",
+      "icon": "🎚️",
+      "color": "#7209b7",
+      "gradient": "linear-gradient(135deg, #7209b7, #560bad)",
+      "description": "Tuned for ≥95% accuracy on RTX 5080 12 GB VRAM",
+      "targetAccuracy": "≥95%",
+      "items": [
+        {
+          "name": "Batch Size",
+          "logoAlt": "📦",
+          "config": "per_device_train_batch_size=1",
+          "useCase": "Number of samples per GPU per forward pass",
+          "whyUsed": "Batch=1 is maximum for 4B model on 12 GB with gradient checkpointing. Larger batches cause OOM",
+          "alternatives": ["2 (risk OOM)", "4+ (needs 24+ GB)"]
+        },
+        {
+          "name": "Gradient Accumulation",
+          "logoAlt": "➕",
+          "config": "gradient_accumulation_steps=32",
+          "effectiveBatch": "1 × 32 = 32",
+          "useCase": "Simulate large batch for stable gradients",
+          "whyUsed": "Effective batch=32 gives reliable gradient estimates. Larger than v1's 16 → more stable convergence → higher accuracy",
+          "v1Comparison": "v1: effective 32 (4×8 on T4). v2: effective 32 (1×32 on RTX 5080)"
+        },
+        {
+          "name": "Learning Rate",
+          "logoAlt": "📈",
+          "config": "learning_rate=1e-4",
+          "useCase": "Step size for weight updates",
+          "whyUsed": "1e-4 is gentler than v1's 2e-4. MedGemma is already medical-pretrained — aggressive LR would destroy pretrained knowledge",
+          "v1Comparison": "v1: 2e-4 → fast but risks losing pretrained features. v2: 1e-4 → preserves medical SigLIP features"
+        },
+        {
+          "name": "LR Scheduler",
+          "logoAlt": "📉",
+          "config": "lr_scheduler_type='cosine'",
+          "useCase": "Smoothly decay learning rate to near-zero",
+          "whyUsed": "Cosine annealing provides gradual convergence. Better than linear for fine-tuning pretrained models"
+        },
+        {
+          "name": "Warmup Ratio",
+          "logoAlt": "🌡️",
+          "config": "warmup_ratio=0.05",
+          "useCase": "Gradually ramp LR from 0 to max over first 5% of steps",
+          "whyUsed": "Prevents gradient explosion when LoRA weights are randomly initialized. 5% warmup on ~5K steps ≈ 250 warmup steps"
+        },
+        {
+          "name": "Epochs",
+          "logoAlt": "🔁",
+          "config": "num_train_epochs=5",
+          "useCase": "Complete passes through 160K images",
+          "whyUsed": "5 epochs × 160K images = ~800K training samples. Enough for convergence without overfitting (with early stopping)",
+          "v1Comparison": "v1: 3 epochs on 11K = 33K samples. v2: 5 epochs on 160K = 800K samples (24× more)",
+          "alternatives": ["3 (may underfit)", "7-10 (if accuracy < 95%)", "1 (quick benchmark)"]
+        },
+        {
+          "name": "Optimizer",
+          "logoAlt": "🏎️",
+          "config": "optim='adamw_torch_fused'",
+          "useCase": "Fused kernel AdamW for speed",
+          "whyUsed": "5-10% faster than standard AdamW via CUDA kernel fusion. Required: PyTorch 2.x + GPU"
+        },
+        {
+          "name": "Precision",
+          "logoAlt": "🎯",
+          "config": "bf16=True",
+          "useCase": "BFloat16 mixed precision training",
+          "whyUsed": "RTX 5080 has native BF16 tensor cores (SM ≥8.0). BF16 has 8-bit exponent = no gradient overflow. Superior to FP16 for training stability",
+          "v1Comparison": "v1: FP16 on T4 → occasional loss spikes. v2: BF16 → perfectly stable"
+        },
+        {
+          "name": "Max Grad Norm",
+          "logoAlt": "✂️",
+          "config": "max_grad_norm=0.3",
+          "useCase": "Clip gradient magnitudes",
+          "whyUsed": "0.3 is conservative. With QLoRA and medical data, conservative clipping prevents catastrophic updates"
+        },
+        {
+          "name": "Sequence Length",
+          "logoAlt": "📏",
+          "config": "max_seq_length=512",
+          "useCase": "Maximum tokens per training example",
+          "whyUsed": "Structured reports are ~150-300 tokens. 512 gives headroom for complex multi-finding cases. Longer sequences use more VRAM"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Evaluation & Accuracy Target",
+      "icon": "🎯",
+      "color": "#118ab2",
+      "gradient": "linear-gradient(135deg, #118ab2, #06d6a0)",
+      "description": "Multi-metric evaluation with 95% accuracy gate",
+      "targetAccuracy": "≥95%",
+      "items": [
+        {
+          "name": "Exact Match Accuracy",
+          "logoAlt": "✅",
+          "metric": "Predicted findings set == ground truth findings set",
+          "useCase": "Strictest measure: all findings must match exactly",
+          "interpretation": "Lower bound of model quality"
+        },
+        {
+          "name": "Soft Match Accuracy",
+          "logoAlt": "🟢",
+          "metric": "≥50% of ground truth findings found in prediction",
+          "useCase": "Clinical relevance: did the model catch the important findings?",
+          "whyUsed": "This is the PRIMARY metric for the 95% target. Exact match is too strict for multi-label with 174 categories. Soft match reflects clinical utility — catching 3/4 findings is still diagnostically useful",
+          "target": "≥95%"
+        },
+        {
+          "name": "Micro Precision",
+          "logoAlt": "🔵",
+          "metric": "TP / (TP + FP) across all findings",
+          "useCase": "How many predicted findings were correct?",
+          "whyUsed": "High precision = few false alarms → less unnecessary follow-up"
+        },
+        {
+          "name": "Micro Recall",
+          "logoAlt": "🔴",
+          "metric": "TP / (TP + FN) across all findings",
+          "useCase": "How many actual findings were detected?",
+          "whyUsed": "High recall = few missed findings → patient safety"
+        },
+        {
+          "name": "Micro F1",
+          "logoAlt": "🟡",
+          "metric": "Harmonic mean of precision and recall",
+          "useCase": "Balanced overall quality score",
+          "whyUsed": "F1 penalizes both false positives and false negatives equally"
+        },
+        {
+          "name": "Per-Finding Breakdown",
+          "logoAlt": "📊",
+          "metric": "Individual P/R/F1 for each of 174 findings",
+          "useCase": "Identify which conditions the model struggles with",
+          "whyUsed": "Some findings (e.g., nodule) are hard to detect. Per-finding analysis guides targeted improvement"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Disease Localization & Visualization",
+      "icon": "📍",
+      "color": "#06d6a0",
+      "gradient": "linear-gradient(135deg, #06d6a0, #1b9aaa)",
+      "description": "Anatomical region overlays — from text-based localization to visual bounding boxes",
+      "items": [
+        {
+          "name": "Anatomical Region Mapping",
+          "logoAlt": "🗺️",
+          "useCase": "Map 26 text-based anatomical locations to normalized bounding box coordinates",
+          "whyUsed": "PadChest provides text labels ('right lower lobe', 'cardiac', 'aortic'). We map each to approximate (x, y, w, h) coordinates on the X-ray",
+          "regions": [
+            "Right upper/middle/lower lobe", "Left upper/lower lobe",
+            "Cardiac", "Hilar", "Aortic", "Supra-aortic",
+            "Costophrenic angle (L/R)", "Basal", "Diaphragm",
+            "Pleural", "Rib", "Peribronchial", "Esophageal"
+          ]
+        },
+        {
+          "name": "Color-Coded Overlays",
+          "logoAlt": "🎨",
+          "useCase": "Each finding type gets a unique color",
+          "whyUsed": "Visual distinction between conditions. Cardiomegaly=red, pleural effusion=blue, pneumonia=orange, nodule=yellow, etc.",
+          "colorMap": {
+            "cardiomegaly": "#ef233c",
+            "pleural effusion": "#4361ee",
+            "pneumonia": "#f77f00",
+            "nodule": "#fcbf49",
+            "infiltrates": "#00b4d8",
+            "consolidation": "#b5179e",
+            "atelectasis": "#2dc653",
+            "pulmonary fibrosis": "#7209b7",
+            "COPD signs": "#ff69b4"
+          }
+        },
+        {
+          "name": "Side-by-Side Visualization",
+          "logoAlt": "🖼️",
+          "useCase": "Original X-ray | X-ray with bounding box overlays",
+          "whyUsed": "Clinicians can compare clean image vs annotated image. Semi-transparent colored rectangles with legend. Findings listed below",
+          "output": "16×8 inch figure with original + annotated panels"
+        },
+        {
+          "name": "Interactive predict_xray()",
+          "logoAlt": "🔮",
+          "useCase": "Single-image inference with auto-visualization",
+          "whyUsed": "Pass any X-ray path → get structured report + visual overlay in one call",
+          "usage": "predict_xray('/path/to/xray.png', view='PA')"
+        }
+      ],
+      "v1Comparison": {
+        "v1": "Zero localization support — could not point to WHERE disease is",
+        "v2": "26 mapped anatomical regions with color-coded bounding box overlays"
+      }
+    },
+    {
+      "id": 10,
+      "title": "Callbacks & Training Control",
+      "icon": "🎮",
+      "color": "#8d6e63",
+      "gradient": "linear-gradient(135deg, #8d6e63, #d7ccc8)",
+      "description": "Automated training control for reliable convergence",
+      "items": [
+        {
+          "name": "Early Stopping",
+          "logoAlt": "🛑",
+          "config": {
+            "patience": "5 eval rounds",
+            "threshold": 0.001
+          },
+          "useCase": "Stop training if validation loss plateaus",
+          "whyUsed": "Prevents overfitting (v1's fatal flaw). If no 0.001 improvement for 5 consecutive evals → stop and revert to best checkpoint"
+        },
+        {
+          "name": "Best Model Selection",
+          "logoAlt": "🏆",
+          "config": {
+            "load_best_model_at_end": true,
+            "metric_for_best_model": "eval_loss",
+            "greater_is_better": false
+          },
+          "useCase": "Automatically load the best checkpoint after training",
+          "whyUsed": "Final epoch may overfit. Best model is the one with lowest validation loss"
+        },
+        {
+          "name": "Checkpoint Management",
+          "logoAlt": "💾",
+          "config": {
+            "save_steps": 200,
+            "save_total_limit": 5
+          },
+          "useCase": "Periodic model saves with disk space management",
+          "whyUsed": "Save every 200 steps (≈1 hour). Keep last 5 checkpoints. Survives crashes"
+        },
+        {
+          "name": "TensorBoard Logging",
+          "logoAlt": "📈",
+          "config": "report_to='tensorboard'",
+          "useCase": "Real-time training curves in VS Code TensorBoard extension",
+          "whyUsed": "Monitor loss, learning rate, gradient norms live. Spot overfitting early"
+        },
+        {
+          "name": "Google Drive Auto-Mount",
+          "logoAlt": "☁️",
+          "config": "Auto-mount in Cell 1 (Colab only)",
+          "useCase": "Access PadChest dataset from Drive without manual mounting",
+          "whyUsed": "Seamless data access. Skips mount if already mounted. Falls back gracefully on non-Colab"
+        },
+        {
+          "name": "Memory Cleanup",
+          "logoAlt": "🧹",
+          "config": "del model; torch.cuda.empty_cache(); gc.collect()",
+          "useCase": "Free VRAM between training and evaluation",
+          "whyUsed": "Training model + eval pipeline can't coexist in 12 GB. Clean teardown frees ~6 GB for inference"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Deployment & System Setup",
+      "icon": "🚀",
+      "color": "#023e8a",
+      "gradient": "linear-gradient(135deg, #023e8a, #0096c7)",
+      "description": "End-to-end setup for RTX 5080 system via VS Code",
+      "items": [
+        {
+          "name": "Install Scripts",
+          "logoAlt": "📥",
+          "files": ["install.sh (Linux/macOS)", "install.bat (Windows)"],
+          "useCase": "One-command automated environment setup",
+          "whyUsed": "Creates venv, installs PyTorch+CUDA, all ML deps, registers Jupyter kernel, verifies GPU. Zero manual pip commands",
+          "steps": ["Check Python ≥3.10", "Check NVIDIA GPU", "Create venv", "Install PyTorch+CUDA 12.4", "Install ML stack", "Register Jupyter kernel", "HuggingFace login", "Verify all imports + GPU"]
+        },
+        {
+          "name": "VS Code IDE",
+          "logoAlt": "💻",
+          "useCase": "Primary development environment",
+          "whyUsed": "Native Jupyter notebook support, integrated terminal, TensorBoard extension, Python/Pylance IntelliSense"
+        },
+        {
+          "name": "Hardware: RTX 5080",
+          "logoAlt": "🖥️",
+          "specs": {
+            "vram": "12 GB GDDR7",
+            "architecture": "Blackwell",
+            "computeCapability": "≥8.0",
+            "bf16Support": "Yes (native tensor cores)",
+            "tf32Support": "Yes"
+          },
+          "useCase": "Local training and inference",
+          "whyUsed": "BF16 native, 12 GB fits 4B QLoRA model. No cloud dependency"
+        },
+        {
+          "name": "Google Drive for Desktop",
+          "logoAlt": "📂",
+          "useCase": "Stream 1 TB PadChest dataset without local copy",
+          "whyUsed": "System has 300 GB disk. Drive for Desktop streams images on-demand via G:\\ mount. Only CSV needs local cache"
+        }
+      ]
+    }
+  ],
+  "architectureDiagram": {
+    "title": "End-to-End Architecture Flow",
+    "flow": [
+      {
+        "stage": "Input",
+        "icon": "🫁",
+        "color": "#00b4d8",
+        "components": ["Chest X-ray Image (PNG)", "View Position (PA/AP/L)", "PadChest CSV Annotations"]
+      },
+      {
+        "stage": "Preprocessing",
+        "icon": "⚙️",
+        "color": "#e63946",
+        "components": ["CSV Parsing (safe_parse_list)", "Finding/Location Split", "Image Path Resolution (sub-folders 0-37)", "Curriculum Difficulty Scoring", "Chat Template Formatting"]
+      },
+      {
+        "stage": "Model",
+        "icon": "🧠",
+        "color": "#7209b7",
+        "components": ["Medical SigLIP Vision Encoder (896×896)", "→ Visual tokens", "Gemma 3 Decoder (4B params, QLoRA 4-bit)", "LoRA r=32 all-linear + embed_tokens/lm_head"]
+      },
+      {
+        "stage": "Training",
+        "icon": "🏋️",
+        "color": "#f77f00",
+        "components": ["TRL SFTTrainer", "Custom collate_fn (chat template + label masking)", "BF16 + Gradient Checkpointing", "Early Stopping (patience=5)", "Cosine LR Schedule"]
+      },
+      {
+        "stage": "Output",
+        "icon": "📄",
+        "color": "#06d6a0",
+        "components": ["FINDINGS: [list of conditions]", "LOCATIONS: [anatomical regions]", "IMPRESSION: [clinical summary]"]
+      },
+      {
+        "stage": "Visualization",
+        "icon": "📍",
+        "color": "#118ab2",
+        "components": ["Original X-ray (left panel)", "Annotated X-ray (right panel)", "Color-coded bounding boxes per region", "Legend with finding labels"]
+      },
+      {
+        "stage": "Evaluation",
+        "icon": "🎯",
+        "color": "#2dc653",
+        "components": ["Exact Match Accuracy", "Soft Match Accuracy (≥50% overlap)", "Micro P/R/F1", "Per-Finding Breakdown", "95% accuracy gate (pass/fail)"]
+      }
+    ]
+  },
+  "quickReference": {
+    "model": "MedGemma-4B-it (google/medgemma-4b-it)",
+    "visionEncoder": "Medical SigLIP (896×896)",
+    "decoder": "Gemma 3 (4B)",
+    "quantization": "4-bit NF4 + double quant",
+    "fineTuning": "QLoRA r=32, α=64, all-linear",
+    "trainer": "TRL SFTTrainer + SFTConfig",
+    "computeDtype": "BFloat16",
+    "effectiveBatch": "32 (1×32)",
+    "learningRate": "1e-4 cosine",
+    "epochs": "5 + early stopping",
+    "dataset": "PadChest 160K+ (1 TB, 174 findings)",
+    "dataSplit": "90/5/5",
+    "localization": "26 anatomical regions mapped",
+    "targetAccuracy": "≥95% soft match",
+    "trainableParams": "~100M (<2.5%)",
+    "gpu": "RTX 5080 12 GB VRAM",
+    "environment": "VS Code + Jupyter (local)"
+  },
+  "colorPalette": {
+    "libraries": "#2dc653",
+    "model": "#4361ee",
+    "quantization": "#b5179e",
+    "lora": "#f77f00",
+    "dataset": "#00b4d8",
+    "dataProcessing": "#e63946",
+    "hyperparameters": "#7209b7",
+    "evaluation": "#118ab2",
+    "localization": "#06d6a0",
+    "callbacks": "#8d6e63",
+    "deployment": "#023e8a"
+  },
+  "v1vsV2": {
+    "title": "v1 → v2 Upgrade Summary",
+    "comparisons": [
+      { "aspect": "Model", "v1": "PaliGemma-3B (general VLM)", "v2": "MedGemma-4B-it (medical VLM)", "icon": "🧠" },
+      { "aspect": "Vision", "v1": "Generic SigLIP 224×224", "v2": "Medical SigLIP 896×896", "icon": "👁️" },
+      { "aspect": "Dataset", "v1": "11K images, 14 labels", "v2": "160K+ images, 174 findings", "icon": "📊" },
+      { "aspect": "Localization", "v1": "None", "v2": "104 locations + visual overlays", "icon": "📍" },
+      { "aspect": "Output", "v1": "Template strings", "v2": "Structured FINDINGS/LOCATIONS/IMPRESSION", "icon": "📄" },
+      { "aspect": "LoRA", "v1": "r=16, attention only", "v2": "r=32, all-linear + embeddings", "icon": "🎛️" },
+      { "aspect": "Precision", "v1": "FP16 (T4)", "v2": "BF16 (RTX 5080)", "icon": "⚡" },
+      { "aspect": "Trainer", "v1": "Custom loop", "v2": "TRL SFTTrainer (official)", "icon": "🏋️" },
+      { "aspect": "Evaluation", "v1": "None during training", "v2": "Every 100 steps + early stopping", "icon": "🎯" },
+      { "aspect": "Hardware", "v1": "Colab T4 16 GB", "v2": "RTX 5080 12 GB (local)", "icon": "🖥️" },
+      { "aspect": "Accuracy", "v1": "Memorized templates", "v2": "Target ≥95% soft match", "icon": "✅" }
+    ]
+  }
+}

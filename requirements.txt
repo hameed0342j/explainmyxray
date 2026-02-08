@@ -1,0 +1,45 @@
+# ==============================================
+# ExplainMyXray v2 — Dependencies
+# ==============================================
+
+# Core ML (MedGemma-4B requires these minimum versions)
+torch>=2.2.0
+torchvision>=0.17.0
+transformers>=4.52.0
+accelerate>=1.5.0
+peft>=0.15.0
+bitsandbytes>=0.45.0
+datasets>=3.5.0
+trl>=0.17.0
+
+# Training & Evaluation
+evaluate
+tensorboard
+scikit-learn
+
+# Image Processing
+Pillow>=10.0.0
+
+# Data
+pandas>=2.2.0
+matplotlib
+
+# HuggingFace
+huggingface_hub
+
+# Google Drive (for downloading dataset)
+gdown
+
+# API & Frontend
+fastapi>=0.110.0
+uvicorn>=0.29.0
+streamlit>=1.32.0
+python-multipart>=0.0.9
+
+# Jupyter
+jupyter
+ipykernel
+
+# Utilities
+requests>=2.31.0
+tqdm>=4.66.0

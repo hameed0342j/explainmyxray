@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExplainMyXray - Technical Stack</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #1a1a2e 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            padding: 2rem;
+            background-attachment: fixed;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00d9ff, #00ff88, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #a0a0a0;
+            font-size: 1.1rem;
+        }
+
+        .header .env-badge {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: linear-gradient(90deg, rgba(0, 217, 255, 0.2), rgba(0, 255, 136, 0.2));
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: #00d9ff;
+        }
+
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        @media (max-width: 1200px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Section Cards */
+        .section-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .section-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .section-header {
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .section-icon {
+            font-size: 1.5rem;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .section-number {
+            margin-left: auto;
+            font-size: 0.8rem;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .section-description {
+            padding: 0.75rem 1.25rem;
+            font-size: 0.85rem;
+            color: #888;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Items Grid */
+        .items-container {
+            padding: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .item-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.8rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .item-chip:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .item-chip.selected {
+            background: rgba(0, 217, 255, 0.2);
+            border-color: rgba(0, 217, 255, 0.5);
+        }
+
+        .item-chip.not-selected {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+
+        .item-logo {
+            font-size: 1rem;
+        }
+
+        .item-name {
+            font-weight: 500;
+        }
+
+        /* Detail Panel */
+        .detail-panel {
+            display: none;
+            padding: 1rem 1.25rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.85rem;
+        }
+
+        .detail-panel.active {
+            display: block;
+        }
+
+        .detail-row {
+            display: flex;
+            margin-bottom: 0.5rem;
+        }
+
+        .detail-label {
+            color: #888;
+            width: 100px;
+            flex-shrink: 0;
+        }
+
+        .detail-value {
+            color: #ddd;
+        }
+
+        .detail-value.highlight {
+            color: #00ff88;
+        }
+
+        .detail-value code {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(0, 217, 255, 0.1);
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #00d9ff;
+        }
+
+        /* Quick Reference Card */
+        .quick-ref {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.1), rgba(0, 255, 136, 0.1));
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .quick-ref h3 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: #00d9ff;
+        }
+
+        .quick-ref-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .quick-ref-item {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .quick-ref-item .label {
+            color: #888;
+        }
+
+        .quick-ref-item .value {
+            color: #00ff88;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        /* Color indicators for sections */
+        .section-card[data-section="1"] .section-icon { background: linear-gradient(135deg, #11998e, #38ef7d); }
+        .section-card[data-section="2"] .section-icon { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .section-card[data-section="3"] .section-icon { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .section-card[data-section="4"] .section-icon { background: linear-gradient(135deg, #f5af19, #f12711); }
+        .section-card[data-section="5"] .section-icon { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+        .section-card[data-section="6"] .section-icon { background: linear-gradient(135deg, #fc466b, #3f5efb); }
+        .section-card[data-section="7"] .section-icon { background: linear-gradient(135deg, #a18cd1, #fbc2eb); }
+        .section-card[data-section="8"] .section-icon { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        .section-card[data-section="9"] .section-icon { background: linear-gradient(135deg, #d299c2, #fef9d7); }
+
+        /* Tooltip */
+        .tooltip {
+            position: fixed;
+            background: rgba(20, 20, 30, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            max-width: 350px;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        .tooltip h4 {
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+            color: #00d9ff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tooltip-content {
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .tooltip-row {
+            margin-bottom: 0.5rem;
+        }
+
+        .tooltip-label {
+            color: #888;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tooltip-value {
+            color: #ddd;
+        }
+
+        .tooltip-value.why {
+            color: #00ff88;
+        }
+
+        .tooltip-value.alt {
+            color: #ff9800;
+            font-size: 0.8rem;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #555;
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: #00d9ff;
+            text-decoration: none;
+        }
+
+        /* Summary badges */
+        .summary-badges {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+
+        .summary-badge {
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .summary-badge .label {
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .summary-badge .value {
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .summary-badge.green .value { color: #00ff88; }
+        .summary-badge.blue .value { color: #00d9ff; }
+        .summary-badge.purple .value { color: #a18cd1; }
+        .summary-badge.orange .value { color: #ff9800; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🩺 ExplainMyXray</h1>
+            <p>Chest X-ray Report Generation using Fine-tuned Vision-Language Model</p>
+            <span class="env-badge">🖥️ Google Colab T4 GPU (16GB VRAM)</span>
+            
+            <div class="summary-badges">
+                <div class="summary-badge green">
+                    <div class="label">Model</div>
+                    <div class="value">PaliGemma-3B</div>
+                </div>
+                <div class="summary-badge blue">
+                    <div class="label">Quantization</div>
+                    <div class="value">4-bit NF4</div>
+                </div>
+                <div class="summary-badge purple">
+                    <div class="label">LoRA</div>
+                    <div class="value">r=16, α=32</div>
+                </div>
+                <div class="summary-badge orange">
+                    <div class="label">Trainable</div>
+                    <div class="value">0.23%</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Grid of 9 Sections -->
+        <div class="grid">
+            <!-- Section 1: Libraries -->
+            <div class="section-card" data-section="1">
+                <div class="section-header">
+                    <div class="section-icon">📚</div>
+                    <div class="section-title">Libraries & Frameworks</div>
+                    <div class="section-number">#1</div>
+                </div>
+                <div class="section-description">Core ML libraries powering the training pipeline</div>
+                <div class="items-container">
+                    <div class="item-chip" data-item="transformers">
+                        <span class="item-logo">🤗</span>
+                        <span class="item-name">Transformers</span>
+                    </div>
+                    <div class="item-chip" data-item="peft">
+                        <span class="item-logo">🔧</span>
+                        <span class="item-name">PEFT</span>
+                    </div>
+                    <div class="item-chip" data-item="bitsandbytes">
+                        <span class="item-logo">🔢</span>
+                        <span class="item-name">BitsAndBytes</span>
+                    </div>
+                    <div class="item-chip" data-item="accelerate">
+                        <span class="item-logo">🚀</span>
+                        <span class="item-name">Accelerate</span>
+                    </div>
+                    <div class="item-chip" data-item="pytorch">
+                        <span class="item-logo">🔥</span>
+                        <span class="item-name">PyTorch</span>
+                    </div>
+                    <div class="item-chip" data-item="pillow">
+                        <span class="item-logo">🖼️</span>
+                        <span class="item-name">Pillow</span>
+                    </div>
+                    <div class="item-chip" data-item="torchvision">
+                        <span class="item-logo">👁️</span>
+                        <span class="item-name">Torchvision</span>
+                    </div>
+                    <div class="item-chip" data-item="sklearn">
+                        <span class="item-logo">🔬</span>
+                        <span class="item-name">Scikit-learn</span>
+                    </div>
+                    <div class="item-chip" data-item="evaluate">
+                        <span class="item-logo">📊</span>
+                        <span class="item-name">Evaluate</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Model Selection -->
+            <div class="section-card" data-section="2">
+                <div class="section-header">
+                    <div class="section-icon">🤖</div>
+                    <div class="section-title">Model Selection</div>
+                    <div class="section-number">#2</div>
+                </div>
+                <div class="section-description">Vision-Language Model choice and reasoning</div>
+                <div class="items-container">
+                    <div class="item-chip selected" data-item="paligemma">
+                        <span class="item-logo">💎</span>
+                        <span class="item-name">PaliGemma-3B ✓</span>
+                    </div>
+                    <div class="item-chip not-selected" data-item="gpt4v">
+                        <span class="item-logo">🚫</span>
+                        <span class="item-name">GPT-4V</span>
+                    </div>
+                    <div class="item-chip not-selected" data-item="llava">
+                        <span class="item-logo">🚫</span>
+                        <span class="item-name">LLaVA-7B</span>
+                    </div>
+                    <div class="item-chip not-selected" data-item="blip2">
+                        <span class="item-logo">🚫</span>
+                        <span class="item-name">BLIP-2</span>
+                    </div>
+                    <div class="item-chip not-selected" data-item="biomedclip">
+                        <span class="item-logo">🚫</span>
+                        <span class="item-name">BiomedCLIP</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Quantization -->
+            <div class="section-card" data-section="3">
+                <div class="section-header">
+                    <div class="section-icon">💾</div>
+                    <div class="section-title">Quantization & Memory</div>
+                    <div class="section-number">#3</div>
+                </div>
+                <div class="section-description">Memory optimization techniques for T4 GPU</div>
+                <div class="items-container">
+                    <div class="item-chip" data-item="4bit">
+                        <span class="item-logo">4️⃣</span>
+                        <span class="item-name">4-bit Quant</span>
+                    </div>
+                    <div class="item-chip" data-item="nf4">
+                        <span class="item-logo">📊</span>
+                        <span class="item-name">NF4 Type</span>
+                    </div>
+                    <div class="item-chip" data-item="doublequant">
+                        <span class="item-logo">2️⃣</span>
+                        <span class="item-name">Double Quant</span>
+                    </div>
+                    <div class="item-chip" data-item="fp16">
+                        <span class="item-logo">⚡</span>
+                        <span class="item-name">FP16 Compute</span>
+                    </div>
+                    <div class="item-chip" data-item="gradcheck">
+                        <span class="item-logo">♻️</span>
+                        <span class="item-name">Grad Checkpoint</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: LoRA -->
+            <div class="section-card" data-section="4">
+                <div class="section-header">
+                    <div class="section-icon">🎛️</div>
+                    <div class="section-title">LoRA Configuration</div>
+                    <div class="section-number">#4</div>
+                </div>
+                <div class="section-description">Low-Rank Adaptation for efficient fine-tuning</div>
+                <div class="items-container">
+                    <div class="item-chip" data-item="rank">
+                        <span class="item-logo">📐</span>
+                        <span class="item-name">Rank=16</span>
+                    </div>
+                    <div class="item-chip" data-item="alpha">
+                        <span class="item-logo">⚖️</span>
+                        <span class="item-name">Alpha=32</span>
+                    </div>
+                    <div class="item-chip" data-item="targets">
+                        <span class="item-logo">🎯</span>
+                        <span class="item-name">QKVO Proj</span>
+                    </div>
+                    <div class="item-chip" data-item="dropout">
+                        <span class="item-logo">💧</span>
+                        <span class="item-name">Dropout=0.05</span>
+                    </div>
+                    <div class="item-chip" data-item="bias">
+                        <span class="item-logo">⚙️</span>
+                        <span class="item-name">Bias=none</span>
+                    </div>
+                    <div class="item-chip" data-item="tasktype">
+                        <span class="item-logo">📝</span>
+                        <span class="item-name">CAUSAL_LM</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 5: Datasets -->
+            <div class="section-card" data-section="5">
+                <div class="section-header">
+                    <div class="section-icon">📁</div>
+                    <div class="section-title">Datasets</div>
+                    <div class="section-number">#5</div>
+                </div>
+                <div class="section-description">Training data sources from Kaggle</div>
+                <div class="items-container">
+                    <div class="item-chip selected" data-item="pneumonia">
+                        <span class="item-logo">🫁</span>
+                        <span class="item-name">Pneumonia ~17K</span>
+                    </div>
+                    <div class="item-chip selected" data-item="nih">
+                        <span class="item-logo">🏥</span>
+                        <span class="item-name">NIH Sample ~5K</span>
+                    </div>
+                    <div class="item-chip" data-item="combined">
+                        <span class="item-logo">🔗</span>
+                        <span class="item-name">Combined ~23K</span>
+                    </div>
+                    <div class="item-chip not-selected" data-item="chexpert">
+                        <span class="item-logo">🚫</span>
+                        <span class="item-name">CheXpert</span>
+                    </div>
+                    <div class="item-chip not-selected" data-item="mimic">
+                        <span class="item-logo">🚫</span>
+                        <span class="item-name">MIMIC-CXR</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 6: Data Processing -->
+            <div class="section-card" data-section="6">
+                <div class="section-header">
+                    <div class="section-icon">⚙️</div>
+                    <div class="section-title">Data Processing</div>
+                    <div class="section-number">#6</div>
+                </div>
+                <div class="section-description">Data preparation and augmentation pipeline</div>
+                <div class="items-container">
+                    <div class="item-chip" data-item="stratified">
+                        <span class="item-logo">📊</span>
+                        <span class="item-name">Stratified Split</span>
+                    </div>
+                    <div class="item-chip" data-item="rarefilter">
+                        <span class="item-logo">🔍</span>
+                        <span class="item-name">Rare Filter</span>
+                    </div>
+                    <div class="item-chip" data-item="maxsamples">
+                        <span class="item-logo">📉</span>
+                        <span class="item-name">Max 8K</span>
+                    </div>
+                    <div class="item-chip" data-item="flip">
+                        <span class="item-logo">↔️</span>
+                        <span class="item-name">H-Flip 30%</span>
+                    </div>
+                    <div class="item-chip" data-item="rotation">
+                        <span class="item-logo">🔄</span>
+                        <span class="item-name">Rotate ±5°</span>
+                    </div>
+                    <div class="item-chip" data-item="colorjitter">
+                        <span class="item-logo">🌈</span>
+                        <span class="item-name">ColorJitter</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 7: Hyperparameters -->
+            <div class="section-card" data-section="7">
+                <div class="section-header">
+                    <div class="section-icon">🎚️</div>
+                    <div class="section-title">Hyperparameters</div>
+                    <div class="section-number">#7</div>
+                </div>
+                <div class="section-description">Training configuration optimized for T4</div>
+                <div class="items-container">
+                    <div class="item-chip" data-item="batchsize">
+                        <span class="item-logo">📦</span>
+                        <span class="item-name">Batch=4</span>
+                    </div>
+                    <div class="item-chip" data-item="gradaccum">
+                        <span class="item-logo">➕</span>
+                        <span class="item-name">Accum=8</span>
+                    </div>
+                    <div class="item-chip" data-item="lr">
+                        <span class="item-logo">📈</span>
+                        <span class="item-name">LR=2e-4</span>
+                    </div>
+                    <div class="item-chip" data-item="scheduler">
+                        <span class="item-logo">📉</span>
+                        <span class="item-name">Cosine</span>
+                    </div>
+                    <div class="item-chip" data-item="warmup">
+                        <span class="item-logo">🌡️</span>
+                        <span class="item-name">Warmup=50</span>
+                    </div>
+                    <div class="item-chip" data-item="epochs">
+                        <span class="item-logo">🔁</span>
+                        <span class="item-name">Epochs=10</span>
+                    </div>
+                    <div class="item-chip" data-item="optimizer">
+                        <span class="item-logo">🏎️</span>
+                        <span class="item-name">AdamW Fused</span>
+                    </div>
+                    <div class="item-chip" data-item="precision">
+                        <span class="item-logo">🎯</span>
+                        <span class="item-name">FP16</span>
+                    </div>
+                    <div class="item-chip" data-item="seqlen">
+                        <span class="item-logo">📏</span>
+                        <span class="item-name">MaxLen=384</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 8: Evaluation -->
+            <div class="section-card" data-section="8">
+                <div class="section-header">
+                    <div class="section-icon">📊</div>
+                    <div class="section-title">Evaluation Metrics</div>
+                    <div class="section-number">#8</div>
+                </div>
+                <div class="section-description">Text generation quality measurements</div>
+                <div class="items-container">
+                    <div class="item-chip" data-item="bleu">
+                        <span class="item-logo">🔵</span>
+                        <span class="item-name">BLEU</span>
+                    </div>
+                    <div class="item-chip" data-item="rouge1">
+                        <span class="item-logo">🔴</span>
+                        <span class="item-name">ROUGE-1</span>
+                    </div>
+                    <div class="item-chip" data-item="rouge2">
+                        <span class="item-logo">🟠</span>
+                        <span class="item-name">ROUGE-2</span>
+                    </div>
+                    <div class="item-chip" data-item="rougel">
+                        <span class="item-logo">🟡</span>
+                        <span class="item-name">ROUGE-L</span>
+                    </div>
+                    <div class="item-chip" data-item="trainloss">
+                        <span class="item-logo">📉</span>
+                        <span class="item-name">Train Loss</span>
+                    </div>
+                    <div class="item-chip" data-item="valloss">
+                        <span class="item-logo">📈</span>
+                        <span class="item-name">Val Loss</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 9: Callbacks -->
+            <div class="section-card" data-section="9">
+                <div class="section-header">
+                    <div class="section-icon">🎮</div>
+                    <div class="section-title">Callbacks & Control</div>
+                    <div class="section-number">#9</div>
+                </div>
+                <div class="section-description">Training control and automation</div>
+                <div class="items-container">
+                    <div class="item-chip" data-item="earlystop">
+                        <span class="item-logo">🛑</span>
+                        <span class="item-name">Early Stop</span>
+                    </div>
+                    <div class="item-chip" data-item="checkpoint">
+                        <span class="item-logo">💾</span>
+                        <span class="item-name">Checkpoints</span>
+                    </div>
+                    <div class="item-chip" data-item="bestmodel">
+                        <span class="item-logo">🏆</span>
+                        <span class="item-name">Load Best</span>
+                    </div>
+                    <div class="item-chip" data-item="workers">
+                        <span class="item-logo">👷</span>
+                        <span class="item-name">Workers=4</span>
+                    </div>
+                    <div class="item-chip" data-item="progress">
+                        <span class="item-logo">📋</span>
+                        <span class="item-name">Progress Log</span>
+                    </div>
+                    <div class="item-chip" data-item="drivebackup">
+                        <span class="item-logo">☁️</span>
+                        <span class="item-name">Drive Backup</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Reference -->
+        <div class="quick-ref">
+            <h3>⚡ Quick Reference</h3>
+            <div class="quick-ref-grid">
+                <div class="quick-ref-item">
+                    <span class="label">Model:</span>
+                    <span class="value">PaliGemma-3B-pt-224</span>
+                </div>
+                <div class="quick-ref-item">
+                    <span class="label">Quantization:</span>
+                    <span class="value">4-bit NF4</span>
+                </div>
+                <div class="quick-ref-item">
+                    <span class="label">Fine-tuning:</span>
+                    <span class="value">LoRA r=16, α=32</span>
+                </div>
+                <div class="quick-ref-item">
+                    <span class="label">Compute:</span>
+                    <span class="value">FP16 (T4 optimized)</span>
+                </div>
+                <div class="quick-ref-item">
+                    <span class="label">Effective Batch:</span>
+                    <span class="value">32 (4×8)</span>
+                </div>
+                <div class="quick-ref-item">
+                    <span class="label">Learning Rate:</span>
+                    <span class="value">2e-4 cosine</span>
+                </div>
+                <div class="quick-ref-item">
+                    <span class="label">Data Split:</span>
+                    <span class="value">80/10/10 stratified</span>
+                </div>
+                <div class="quick-ref-item">
+                    <span class="label">Trainable Params:</span>
+                    <span class="value">0.23% (~7M)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>ExplainMyXray Technical Stack Visualization | <a href="tech_stack_visualization.json">View JSON Data</a></p>
+            <p style="margin-top: 0.5rem;">Generated from training session analysis</p>
+        </footer>
+    </div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip">
+        <h4><span class="tooltip-icon"></span><span class="tooltip-title"></span></h4>
+        <div class="tooltip-content"></div>
+    </div>
+
+    <script>
+        // Tooltip data
+        const tooltipData = {
+            // Libraries
+            transformers: {
+                title: "Transformers",
+                version: "≥4.47.0",
+                useCase: "Pre-trained models, tokenizers, Trainer API",
+                whyUsed: "Industry standard for loading PaliGemma and training VLMs",
+                alternatives: "PyTorch Lightning, JAX/Flax, Custom Loop"
+            },
+            peft: {
+                title: "PEFT",
+                version: "≥0.14.0",
+                useCase: "Parameter-efficient fine-tuning (LoRA, QLoRA)",
+                whyUsed: "Train only 0.2% parameters → fits in 16GB VRAM",
+                alternatives: "Full Fine-tuning, Adapter-Tuning, Prefix-Tuning"
+            },
+            bitsandbytes: {
+                title: "BitsAndBytes",
+                version: "≥0.45.0",
+                useCase: "4-bit/8-bit model quantization",
+                whyUsed: "Reduces 12GB model to 4GB → fits on T4",
+                alternatives: "GPTQ, AWQ, GGML"
+            },
+            accelerate: {
+                title: "Accelerate",
+                version: "≥1.0.0",
+                useCase: "Device placement, mixed precision",
+                whyUsed: "Automatic GPU/CPU distribution with device_map='auto'",
+                alternatives: "Manual .to(device), DeepSpeed, FSDP"
+            },
+            pytorch: {
+                title: "PyTorch",
+                version: "2.x",
+                useCase: "Deep learning framework",
+                whyUsed: "HuggingFace ecosystem is PyTorch-native",
+                alternatives: "TensorFlow, JAX, MXNet"
+            },
+            pillow: {
+                title: "Pillow (PIL)",
+                version: "≥10.0.0",
+                useCase: "Image loading and preprocessing",
+                whyUsed: "Load X-ray images, convert grayscale→RGB",
+                alternatives: "OpenCV, imageio, torchvision.io"
+            },
+            torchvision: {
+                title: "Torchvision",
+                useCase: "Image augmentation transforms",
+                whyUsed: "RandomFlip, Rotation, ColorJitter for training",
+                alternatives: "Albumentations, imgaug, Kornia"
+            },
+            sklearn: {
+                title: "Scikit-learn",
+                useCase: "Data splitting utilities",
+                whyUsed: "Stratified train_test_split for class balance",
+                alternatives: "Manual splitting, PyTorch random_split"
+            },
+            evaluate: {
+                title: "Evaluate",
+                useCase: "BLEU/ROUGE metric computation",
+                whyUsed: "Standardized NLG evaluation metrics",
+                alternatives: "nltk.bleu, rouge_score, Custom metrics"
+            },
+            // Models
+            paligemma: {
+                title: "PaliGemma-3B-pt-224",
+                useCase: "Multimodal image→text generation",
+                whyUsed: "3B params fits T4 with quantization, 224px efficient for X-rays",
+                alternatives: "GPT-4V, LLaVA, BLIP-2"
+            },
+            gpt4v: {
+                title: "GPT-4V",
+                useCase: "Multimodal understanding",
+                whyUsed: "❌ Closed source, expensive API, no fine-tuning"
+            },
+            llava: {
+                title: "LLaVA-7B",
+                useCase: "Open-source VLM",
+                whyUsed: "❌ 7B too large for T4 even with quantization"
+            },
+            blip2: {
+                title: "BLIP-2",
+                useCase: "Image captioning",
+                whyUsed: "❌ Older architecture, less accurate for generation"
+            },
+            biomedclip: {
+                title: "BiomedCLIP",
+                useCase: "Medical image embeddings",
+                whyUsed: "❌ Vision-only, no text generation capability"
+            },
+            // Quantization
+            "4bit": {
+                title: "4-bit Quantization",
+                config: "load_in_4bit=True",
+                useCase: "Reduce model memory by 4×",
+                whyUsed: "3B model: 12GB→4GB, fits T4 with room for gradients",
+                alternatives: "8-bit (50% reduction), FP16 (needs A100)"
+            },
+            nf4: {
+                title: "NF4 Quant Type",
+                config: "bnb_4bit_quant_type='nf4'",
+                useCase: "Optimized 4-bit format",
+                whyUsed: "NormalFloat4 preserves more info for normally-distributed weights",
+                alternatives: "FP4 (less accurate), INT4 (even less accurate)"
+            },
+            doublequant: {
+                title: "Double Quantization",
+                config: "bnb_4bit_use_double_quant=True",
+                useCase: "Quantize the quantization constants",
+                whyUsed: "Saves extra ~0.4GB with minimal quality loss"
+            },
+            fp16: {
+                title: "FP16 Compute",
+                config: "bnb_4bit_compute_dtype=torch.float16",
+                useCase: "Precision for forward/backward pass",
+                whyUsed: "T4 has FP16 tensor cores. BF16 is slow on Turing",
+                alternatives: "BF16 (for A100), FP32 (slowest)"
+            },
+            gradcheck: {
+                title: "Gradient Checkpointing",
+                config: "use_gradient_checkpointing=True",
+                useCase: "Trade compute for memory",
+                whyUsed: "Recompute activations during backward → 60% less activation memory"
+            },
+            // LoRA
+            rank: {
+                title: "LoRA Rank (r=16)",
+                config: "lora_r=16",
+                useCase: "Size of low-rank matrices",
+                whyUsed: "Sweet spot: enough capacity for medical knowledge, fits T4",
+                alternatives: "r=8 (faster), r=32 (more capacity), r=64 (overkill)"
+            },
+            alpha: {
+                title: "LoRA Alpha (α=32)",
+                config: "lora_alpha=32",
+                useCase: "Scaling factor for LoRA outputs",
+                whyUsed: "α=2×r is common practice. scaling = α/r = 2×"
+            },
+            targets: {
+                title: "Target Modules",
+                config: "[q_proj, k_proj, v_proj, o_proj]",
+                useCase: "Which layers get LoRA adapters",
+                whyUsed: "Attention layers are most important for behavior adaptation",
+                alternatives: "+ FFN layers (more params), Only q,v_proj (minimal)"
+            },
+            dropout: {
+                title: "LoRA Dropout",
+                config: "lora_dropout=0.05",
+                useCase: "Regularization in LoRA layers",
+                whyUsed: "Light regularization - medical data has patterns",
+                alternatives: "0.0 (risk overfitting), 0.1 (standard)"
+            },
+            bias: {
+                title: "LoRA Bias",
+                config: "bias='none'",
+                useCase: "Whether to train bias terms",
+                whyUsed: "Bias adds minimal capacity but increases complexity",
+                alternatives: "'all', 'lora_only'"
+            },
+            tasktype: {
+                title: "Task Type",
+                config: "TaskType.CAUSAL_LM",
+                useCase: "Model architecture type",
+                whyUsed: "PaliGemma is autoregressive (generates left→right)",
+                alternatives: "SEQ_2_SEQ_LM, SEQ_CLS, TOKEN_CLS"
+            },
+            // Datasets
+            pneumonia: {
+                title: "Chest X-ray Pneumonia",
+                source: "kaggle: paultimothymooney/chest-xray-pneumonia",
+                useCase: "Binary classification (Normal/Pneumonia)",
+                whyUsed: "High quality, curated, ~17K images, good resolution"
+            },
+            nih: {
+                title: "NIH Chest X-ray Sample",
+                source: "kaggle: nih-chest-xrays/sample",
+                useCase: "Multi-label (14 disease categories)",
+                whyUsed: "Multiple diseases per image, ~5K images, realistic clinical scenario"
+            },
+            combined: {
+                title: "Combined Dataset",
+                useCase: "Merged training data",
+                whyUsed: "Data diversity + volume: Binary + Multi-label, ~23K total"
+            },
+            chexpert: {
+                title: "CheXpert",
+                useCase: "Large medical dataset",
+                whyUsed: "❌ Requires Stanford registration"
+            },
+            mimic: {
+                title: "MIMIC-CXR",
+                useCase: "Real radiology reports",
+                whyUsed: "❌ Requires PhysioNet credentialing"
+            },
+            // Data Processing
+            stratified: {
+                title: "Stratified Split",
+                config: "stratify=df['Labels']",
+                useCase: "Proportional class representation",
+                whyUsed: "Medical data is imbalanced - prevents rare diseases missing in test"
+            },
+            rarefilter: {
+                title: "Rare Class Filter",
+                config: "MIN_SAMPLES_PER_CLASS = 10",
+                useCase: "Remove classes with <10 samples",
+                whyUsed: "Stratified split requires ≥2 samples per class per split"
+            },
+            maxsamples: {
+                title: "Max Samples Control",
+                config: "MAX_SAMPLES = 8000",
+                useCase: "Limit dataset size",
+                whyUsed: "8K samples ≈ 3-4 hours on T4, good balance"
+            },
+            flip: {
+                title: "RandomHorizontalFlip",
+                config: "p=0.3",
+                useCase: "Mirror images randomly",
+                whyUsed: "X-rays can be flipped - anatomy is roughly symmetric"
+            },
+            rotation: {
+                title: "RandomRotation",
+                config: "degrees=5",
+                useCase: "Slight rotation augmentation",
+                whyUsed: "Accounts for patient positioning (±5° only)"
+            },
+            colorjitter: {
+                title: "ColorJitter",
+                config: "brightness=0.1, contrast=0.1",
+                useCase: "Vary image brightness/contrast",
+                whyUsed: "Different X-ray machines have different exposures"
+            },
+            // Hyperparameters
+            batchsize: {
+                title: "Batch Size",
+                config: "per_device_train_batch_size=4",
+                useCase: "Samples per GPU per step",
+                whyUsed: "4 is maximum that fits T4 VRAM with 3B quantized model"
+            },
+            gradaccum: {
+                title: "Gradient Accumulation",
+                config: "gradient_accumulation_steps=8",
+                useCase: "Simulate larger batch",
+                whyUsed: "Effective batch 32 = stable gradients. Actual 4 fits memory"
+            },
+            lr: {
+                title: "Learning Rate",
+                config: "learning_rate=2e-4",
+                useCase: "Step size for weight updates",
+                whyUsed: "2e-4 is standard for LoRA. Higher causes instability with quantization"
+            },
+            scheduler: {
+                title: "LR Scheduler",
+                config: "lr_scheduler_type='cosine'",
+                useCase: "Decay learning rate",
+                whyUsed: "Cosine provides smooth decay, better for fine-tuning"
+            },
+            warmup: {
+                title: "Warmup Steps",
+                config: "warmup_steps=50",
+                useCase: "Gradually increase LR at start",
+                whyUsed: "Prevents gradient explosion when LoRA weights are random"
+            },
+            epochs: {
+                title: "Training Epochs",
+                config: "num_train_epochs=10",
+                useCase: "Complete passes through data",
+                whyUsed: "10 epochs with early stopping usually finds optimal"
+            },
+            optimizer: {
+                title: "Optimizer",
+                config: "optim='adamw_torch_fused'",
+                useCase: "Weight update algorithm",
+                whyUsed: "Fused AdamW is 5-10% faster via kernel fusion"
+            },
+            precision: {
+                title: "Precision",
+                config: "fp16=True, bf16=False",
+                useCase: "Mixed precision training",
+                whyUsed: "T4 has FP16 tensor cores. BF16 not optimal on Turing"
+            },
+            seqlen: {
+                title: "Sequence Length",
+                config: "max_length=384",
+                useCase: "Max tokens in input+output",
+                whyUsed: "Medical reports are ~100-200 words. 384 sufficient"
+            },
+            // Evaluation
+            bleu: {
+                title: "BLEU Score",
+                useCase: "N-gram precision",
+                whyUsed: "Standard for text generation - measures word/phrase overlap"
+            },
+            rouge1: {
+                title: "ROUGE-1",
+                useCase: "Unigram recall",
+                whyUsed: "Measures if generated text contains key words"
+            },
+            rouge2: {
+                title: "ROUGE-2",
+                useCase: "Bigram recall",
+                whyUsed: "Captures phrase-level overlap"
+            },
+            rougel: {
+                title: "ROUGE-L",
+                useCase: "Longest common subsequence",
+                whyUsed: "Good for medical reports - captures key info"
+            },
+            trainloss: {
+                title: "Training Loss",
+                useCase: "Cross-entropy loss on train data",
+                whyUsed: "Directly optimized. Expect: ~1.0→~0.05"
+            },
+            valloss: {
+                title: "Validation Loss",
+                useCase: "Loss on held-out data",
+                whyUsed: "Used for early stopping. If eval↑ while train↓ → overfitting"
+            },
+            // Callbacks
+            earlystop: {
+                title: "Early Stopping",
+                config: "patience=3, threshold=0.001",
+                useCase: "Stop when validation loss plateaus",
+                whyUsed: "Prevents overfitting, saves time"
+            },
+            checkpoint: {
+                title: "Checkpoint Saving",
+                config: "save_steps=250, save_total_limit=3",
+                useCase: "Save model periodically",
+                whyUsed: "Colab can disconnect. Every 250 steps ≈ 2 epochs"
+            },
+            bestmodel: {
+                title: "Best Model Loading",
+                config: "load_best_model_at_end=True",
+                useCase: "Revert to best checkpoint",
+                whyUsed: "Final epoch may be overfit. Keep the best one"
+            },
+            workers: {
+                title: "DataLoader Workers",
+                config: "dataloader_num_workers=4",
+                useCase: "Parallel data loading",
+                whyUsed: "4 workers keep GPU fed. Colab has 2 cores"
+            },
+            progress: {
+                title: "Progress Callback",
+                config: "Custom ProgressCallback",
+                useCase: "Log training progress",
+                whyUsed: "Visual feedback: loss and LR every 50 steps"
+            },
+            drivebackup: {
+                title: "Drive Backup",
+                config: "Auto-save to /content/drive/",
+                useCase: "Persist across sessions",
+                whyUsed: "Colab's /content/ is ephemeral. Drive survives"
+            }
+        };
+
+        // Tooltip functionality
+        const tooltip = document.getElementById('tooltip');
+        const chips = document.querySelectorAll('.item-chip');
+
+        chips.forEach(chip => {
+            chip.addEventListener('mouseenter', (e) => {
+                const itemKey = chip.dataset.item;
+                const data = tooltipData[itemKey];
+                
+                if (data) {
+                    const icon = chip.querySelector('.item-logo').textContent;
+                    tooltip.querySelector('.tooltip-icon').textContent = icon;
+                    tooltip.querySelector('.tooltip-title').textContent = data.title;
+                    
+                    let content = '';
+                    if (data.version) content += `<div class="tooltip-row"><div class="tooltip-label">Version</div><div class="tooltip-value">${data.version}</div></div>`;
+                    if (data.config) content += `<div class="tooltip-row"><div class="tooltip-label">Config</div><div class="tooltip-value"><code>${data.config}</code></div></div>`;
+                    if (data.source) content += `<div class="tooltip-row"><div class="tooltip-label">Source</div><div class="tooltip-value">${data.source}</div></div>`;
+                    if (data.useCase) content += `<div class="tooltip-row"><div class="tooltip-label">Use Case</div><div class="tooltip-value">${data.useCase}</div></div>`;
+                    if (data.whyUsed) content += `<div class="tooltip-row"><div class="tooltip-label">Why Used</div><div class="tooltip-value why">${data.whyUsed}</div></div>`;
+                    if (data.alternatives) content += `<div class="tooltip-row"><div class="tooltip-label">Alternatives</div><div class="tooltip-value alt">${data.alternatives}</div></div>`;
+                    
+                    tooltip.querySelector('.tooltip-content').innerHTML = content;
+                    tooltip.classList.add('visible');
+                }
+            });
+
+            chip.addEventListener('mousemove', (e) => {
+                tooltip.style.left = e.pageX + 15 + 'px';
+                tooltip.style.top = e.pageY + 15 + 'px';
+            });
+
+            chip.addEventListener('mouseleave', () => {
+                tooltip.classList.remove('visible');
+            });
+        });
+    </script>
+</body>
+</html>

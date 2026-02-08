@@ -1,0 +1,626 @@
+{
+  "metadata": {
+    "title": "ExplainMyXray - Technical Stack",
+    "subtitle": "Chest X-ray Report Generation using Fine-tuned Vision-Language Model",
+    "version": "1.0",
+    "environment": "Google Colab T4 GPU (16GB VRAM)",
+    "theme": {
+      "background": "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+      "cardBackground": "rgba(255, 255, 255, 0.05)",
+      "cardBorder": "rgba(255, 255, 255, 0.1)",
+      "accentGradient": "linear-gradient(90deg, #00d9ff, #00ff88)",
+      "textPrimary": "#ffffff",
+      "textSecondary": "#a0a0a0"
+    }
+  },
+  "sections": [
+    {
+      "id": 1,
+      "title": "Libraries & Frameworks",
+      "icon": "📚",
+      "color": "#4CAF50",
+      "gradient": "linear-gradient(135deg, #11998e, #38ef7d)",
+      "description": "Core ML libraries powering the training pipeline",
+      "items": [
+        {
+          "name": "Transformers",
+          "logo": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg",
+          "logoAlt": "🤗",
+          "version": "≥4.47.0",
+          "useCase": "Pre-trained models, tokenizers, Trainer API",
+          "whyUsed": "Industry standard for loading PaliGemma and training VLMs",
+          "alternatives": ["PyTorch Lightning", "JAX/Flax", "Custom Loop"]
+        },
+        {
+          "name": "PEFT",
+          "logo": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg",
+          "logoAlt": "🔧",
+          "version": "≥0.14.0",
+          "useCase": "Parameter-efficient fine-tuning (LoRA, QLoRA)",
+          "whyUsed": "Train only 0.2% parameters → fits in 16GB VRAM",
+          "alternatives": ["Full Fine-tuning", "Adapter-Tuning", "Prefix-Tuning"]
+        },
+        {
+          "name": "BitsAndBytes",
+          "logo": "https://raw.githubusercontent.com/TimDettmers/bitsandbytes/main/docs/source/_static/bitsandbytes-logo.png",
+          "logoAlt": "🔢",
+          "version": "≥0.45.0",
+          "useCase": "4-bit/8-bit model quantization",
+          "whyUsed": "Reduces 12GB model to 4GB → fits on T4",
+          "alternatives": ["GPTQ", "AWQ", "GGML"]
+        },
+        {
+          "name": "Accelerate",
+          "logo": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg",
+          "logoAlt": "🚀",
+          "version": "≥1.0.0",
+          "useCase": "Device placement, mixed precision",
+          "whyUsed": "Automatic GPU/CPU distribution with device_map='auto'",
+          "alternatives": ["Manual .to(device)", "DeepSpeed", "FSDP"]
+        },
+        {
+          "name": "PyTorch",
+          "logo": "https://pytorch.org/assets/images/pytorch-logo.png",
+          "logoAlt": "🔥",
+          "version": "2.x",
+          "useCase": "Deep learning framework",
+          "whyUsed": "HuggingFace ecosystem is PyTorch-native",
+          "alternatives": ["TensorFlow", "JAX", "MXNet"]
+        },
+        {
+          "name": "Pillow",
+          "logo": "https://python-pillow.org/images/pillow-logo.png",
+          "logoAlt": "🖼️",
+          "version": "≥10.0.0",
+          "useCase": "Image loading and preprocessing",
+          "whyUsed": "Load X-ray images, convert grayscale→RGB",
+          "alternatives": ["OpenCV", "imageio", "torchvision.io"]
+        },
+        {
+          "name": "Torchvision",
+          "logo": "https://pytorch.org/assets/images/pytorch-logo.png",
+          "logoAlt": "👁️",
+          "version": "0.x",
+          "useCase": "Image augmentation transforms",
+          "whyUsed": "RandomFlip, Rotation, ColorJitter for training",
+          "alternatives": ["Albumentations", "imgaug", "Kornia"]
+        },
+        {
+          "name": "Scikit-learn",
+          "logo": "https://scikit-learn.org/stable/_static/scikit-learn-logo-small.png",
+          "logoAlt": "🔬",
+          "version": "latest",
+          "useCase": "Data splitting utilities",
+          "whyUsed": "Stratified train_test_split for class balance",
+          "alternatives": ["Manual splitting", "PyTorch random_split"]
+        },
+        {
+          "name": "Evaluate",
+          "logo": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg",
+          "logoAlt": "📊",
+          "version": "latest",
+          "useCase": "BLEU/ROUGE metric computation",
+          "whyUsed": "Standardized NLG evaluation metrics",
+          "alternatives": ["nltk.bleu", "rouge_score", "Custom metrics"]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Model Selection",
+      "icon": "🤖",
+      "color": "#2196F3",
+      "gradient": "linear-gradient(135deg, #667eea, #764ba2)",
+      "description": "Vision-Language Model choice and reasoning",
+      "items": [
+        {
+          "name": "PaliGemma-3B-pt-224",
+          "logo": "https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg",
+          "logoAlt": "💎",
+          "version": "google/paligemma-3b-pt-224",
+          "useCase": "Multimodal image→text generation",
+          "whyUsed": "3B params fits T4 with quantization, 224px efficient for X-rays",
+          "selected": true,
+          "specs": {
+            "parameters": "3 billion",
+            "inputResolution": "224×224",
+            "architecture": "Gemma + SigLIP",
+            "vramRequired": "~4GB (4-bit)"
+          }
+        },
+        {
+          "name": "GPT-4V",
+          "logo": "https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg",
+          "logoAlt": "🚫",
+          "useCase": "Multimodal understanding",
+          "whyNotUsed": "Closed source, expensive API, no fine-tuning",
+          "selected": false
+        },
+        {
+          "name": "LLaVA-7B",
+          "logo": "https://llava-vl.github.io/images/llava_logo.png",
+          "logoAlt": "🚫",
+          "useCase": "Open-source VLM",
+          "whyNotUsed": "7B too large for T4 even with quantization",
+          "selected": false
+        },
+        {
+          "name": "BLIP-2",
+          "logo": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg",
+          "logoAlt": "🚫",
+          "useCase": "Image captioning",
+          "whyNotUsed": "Older architecture, less accurate for generation",
+          "selected": false
+        },
+        {
+          "name": "BiomedCLIP",
+          "logo": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg",
+          "logoAlt": "🚫",
+          "useCase": "Medical image embeddings",
+          "whyNotUsed": "Vision-only, no text generation capability",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Quantization & Memory",
+      "icon": "💾",
+      "color": "#9C27B0",
+      "gradient": "linear-gradient(135deg, #f093fb, #f5576c)",
+      "description": "Memory optimization techniques for T4 GPU",
+      "items": [
+        {
+          "name": "4-bit Quantization",
+          "logoAlt": "4️⃣",
+          "config": "load_in_4bit=True",
+          "useCase": "Reduce model memory by 4×",
+          "whyUsed": "3B model: 12GB→4GB, fits T4 with room for gradients",
+          "memoryImpact": "75% reduction",
+          "alternatives": ["8-bit (50% reduction)", "FP16 (needs A100)"]
+        },
+        {
+          "name": "NF4 Quant Type",
+          "logoAlt": "📊",
+          "config": "bnb_4bit_quant_type='nf4'",
+          "useCase": "Optimized 4-bit format",
+          "whyUsed": "NormalFloat4 preserves more info for normally-distributed weights",
+          "alternatives": ["FP4 (less accurate)", "INT4 (even less accurate)"]
+        },
+        {
+          "name": "Double Quantization",
+          "logoAlt": "2️⃣",
+          "config": "bnb_4bit_use_double_quant=True",
+          "useCase": "Quantize the quantization constants",
+          "whyUsed": "Saves extra ~0.4GB with minimal quality loss",
+          "memoryImpact": "~3% additional reduction"
+        },
+        {
+          "name": "FP16 Compute",
+          "logoAlt": "⚡",
+          "config": "bnb_4bit_compute_dtype=torch.float16",
+          "useCase": "Precision for forward/backward pass",
+          "whyUsed": "T4 has FP16 tensor cores, BF16 is slow on Turing",
+          "alternatives": ["BF16 (for A100)", "FP32 (slowest)"]
+        },
+        {
+          "name": "Gradient Checkpointing",
+          "logoAlt": "♻️",
+          "config": "use_gradient_checkpointing=True",
+          "useCase": "Trade compute for memory",
+          "whyUsed": "Recompute activations during backward → 60% less activation memory",
+          "memoryImpact": "~60% activation reduction"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "LoRA Configuration",
+      "icon": "🎛️",
+      "color": "#FF9800",
+      "gradient": "linear-gradient(135deg, #f5af19, #f12711)",
+      "description": "Low-Rank Adaptation settings for efficient fine-tuning",
+      "items": [
+        {
+          "name": "Rank (r=16)",
+          "logoAlt": "📐",
+          "config": "lora_r=16",
+          "useCase": "Size of low-rank matrices",
+          "whyUsed": "Sweet spot: enough capacity for medical knowledge, fits T4",
+          "formula": "W' = W + BA where B∈ℝ^(d×r), A∈ℝ^(r×k)",
+          "alternatives": ["r=8 (faster)", "r=32 (more capacity)", "r=64 (overkill)"]
+        },
+        {
+          "name": "Alpha (α=32)",
+          "logoAlt": "⚖️",
+          "config": "lora_alpha=32",
+          "useCase": "Scaling factor for LoRA outputs",
+          "whyUsed": "α=2×r is common practice, amplifies updates without increasing rank",
+          "formula": "scaling = α/r = 32/16 = 2×"
+        },
+        {
+          "name": "Target Modules",
+          "logoAlt": "🎯",
+          "config": "[q_proj, k_proj, v_proj, o_proj]",
+          "useCase": "Which layers get LoRA adapters",
+          "whyUsed": "Attention layers are most important for behavior adaptation",
+          "alternatives": ["+ FFN layers (more params)", "Only q_proj, v_proj (minimal)"]
+        },
+        {
+          "name": "Dropout (0.05)",
+          "logoAlt": "💧",
+          "config": "lora_dropout=0.05",
+          "useCase": "Regularization in LoRA layers",
+          "whyUsed": "Light regularization - medical data has patterns, don't over-regularize",
+          "alternatives": ["0.0 (risk overfitting)", "0.1 (standard)", "0.2 (heavy)"]
+        },
+        {
+          "name": "Bias (none)",
+          "logoAlt": "⚙️",
+          "config": "bias='none'",
+          "useCase": "Whether to train bias terms",
+          "whyUsed": "Bias adds minimal capacity but increases complexity",
+          "alternatives": ["'all' (train all)", "'lora_only'"]
+        },
+        {
+          "name": "Task Type",
+          "logoAlt": "📝",
+          "config": "TaskType.CAUSAL_LM",
+          "useCase": "Model architecture type",
+          "whyUsed": "PaliGemma is autoregressive (generates left→right)",
+          "alternatives": ["SEQ_2_SEQ_LM", "SEQ_CLS", "TOKEN_CLS"]
+        }
+      ],
+      "summary": {
+        "trainableParams": "~7M (0.23%)",
+        "frozenParams": "~3B (99.77%)",
+        "adapterSize": "~50MB"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Datasets",
+      "icon": "📁",
+      "color": "#00BCD4",
+      "gradient": "linear-gradient(135deg, #43e97b, #38f9d7)",
+      "description": "Training data sources from Kaggle",
+      "items": [
+        {
+          "name": "Chest X-ray Pneumonia",
+          "logoAlt": "🫁",
+          "source": "kaggle: paultimothymooney/chest-xray-pneumonia",
+          "size": "~17,568 images",
+          "labels": "Binary (Normal / Pneumonia)",
+          "useCase": "High-quality curated X-ray images",
+          "whyUsed": "Clear labels, good resolution, widely-used benchmark",
+          "imageFormat": "JPEG",
+          "resolution": "Variable (resized to 224×224)"
+        },
+        {
+          "name": "NIH Chest X-ray Sample",
+          "logoAlt": "🏥",
+          "source": "kaggle: nih-chest-xrays/sample",
+          "size": "~5,606 images",
+          "labels": "Multi-label (14 disease categories)",
+          "useCase": "Diverse pathology combinations",
+          "whyUsed": "Multiple diseases per image, more realistic clinical scenario",
+          "diseaseClasses": [
+            "Atelectasis", "Cardiomegaly", "Effusion", "Infiltration",
+            "Mass", "Nodule", "Pneumonia", "Pneumothorax",
+            "Consolidation", "Edema", "Emphysema", "Fibrosis",
+            "Pleural_Thickening", "Hernia"
+          ]
+        },
+        {
+          "name": "Combined Dataset",
+          "logoAlt": "🔗",
+          "totalImages": "~23,174",
+          "usedForTraining": "8,000 (controlled)",
+          "whyCombined": [
+            "Data diversity: Binary + Multi-label",
+            "Volume: Substantial for fine-tuning",
+            "Quality: Both peer-reviewed datasets",
+            "Accessibility: No special approval needed"
+          ]
+        }
+      ],
+      "notUsed": [
+        {
+          "name": "CheXpert",
+          "reason": "Requires Stanford registration"
+        },
+        {
+          "name": "MIMIC-CXR",
+          "reason": "Requires PhysioNet credentialing"
+        },
+        {
+          "name": "Full NIH ChestX-ray14",
+          "reason": "42GB, too large for Colab"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Data Processing",
+      "icon": "⚙️",
+      "color": "#E91E63",
+      "gradient": "linear-gradient(135deg, #fc466b, #3f5efb)",
+      "description": "Data preparation and augmentation pipeline",
+      "items": [
+        {
+          "name": "Stratified Split",
+          "logoAlt": "📊",
+          "config": "stratify=df['Labels']",
+          "ratio": "80% train / 10% val / 10% test",
+          "useCase": "Proportional class representation in each split",
+          "whyUsed": "Medical data is imbalanced - random split might miss rare diseases in test",
+          "alternatives": ["Random split (risky)", "K-fold (5× training time)"]
+        },
+        {
+          "name": "Rare Class Filter",
+          "logoAlt": "🔍",
+          "config": "MIN_SAMPLES_PER_CLASS = 10",
+          "useCase": "Remove classes with insufficient samples",
+          "whyUsed": "Stratified split requires ≥2 samples per class per split",
+          "problem": "Classes with <10 samples cause ValueError"
+        },
+        {
+          "name": "Max Samples Control",
+          "logoAlt": "📉",
+          "config": "MAX_SAMPLES = 8000",
+          "useCase": "Limit dataset size for training time",
+          "whyUsed": "8K samples ≈ 3-4 hours on T4, good balance of quality vs time",
+          "alternatives": ["5K (faster)", "15K (better)", "Full (longest)"]
+        },
+        {
+          "name": "RandomHorizontalFlip",
+          "logoAlt": "↔️",
+          "config": "p=0.3",
+          "useCase": "Mirror images randomly",
+          "whyUsed": "X-rays can be flipped - anatomy is roughly symmetric",
+          "medicalNote": "30% probability is conservative for medical images"
+        },
+        {
+          "name": "RandomRotation",
+          "logoAlt": "🔄",
+          "config": "degrees=5",
+          "useCase": "Slight rotation augmentation",
+          "whyUsed": "Accounts for patient positioning variation",
+          "medicalNote": "Only ±5° - larger rotations distort anatomy"
+        },
+        {
+          "name": "ColorJitter",
+          "logoAlt": "🌈",
+          "config": "brightness=0.1, contrast=0.1",
+          "useCase": "Vary image brightness/contrast",
+          "whyUsed": "Different X-ray machines have different exposure settings",
+          "medicalNote": "Light jitter only - preserve diagnostic features"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Hyperparameters",
+      "icon": "🎚️",
+      "color": "#673AB7",
+      "gradient": "linear-gradient(135deg, #a18cd1, #fbc2eb)",
+      "description": "Training configuration optimized for T4 GPU",
+      "items": [
+        {
+          "name": "Batch Size",
+          "logoAlt": "📦",
+          "config": "per_device_train_batch_size=4",
+          "useCase": "Samples per GPU per step",
+          "whyUsed": "4 is maximum that fits T4 VRAM with 3B quantized model",
+          "alternatives": ["1-2 (safe)", "8+ (needs A100)"]
+        },
+        {
+          "name": "Gradient Accumulation",
+          "logoAlt": "➕",
+          "config": "gradient_accumulation_steps=8",
+          "effectiveBatch": "4 × 8 = 32",
+          "useCase": "Simulate larger batch via gradient accumulation",
+          "whyUsed": "Large effective batch (32) = stable gradients"
+        },
+        {
+          "name": "Learning Rate",
+          "logoAlt": "📈",
+          "config": "learning_rate=2e-4",
+          "useCase": "Step size for weight updates",
+          "whyUsed": "2e-4 is standard for LoRA. Higher causes instability with quantization",
+          "alternatives": ["1e-4 (slower)", "5e-4 (riskier)"]
+        },
+        {
+          "name": "LR Scheduler",
+          "logoAlt": "📉",
+          "config": "lr_scheduler_type='cosine'",
+          "useCase": "Decay learning rate over training",
+          "whyUsed": "Cosine provides smooth decay, better for fine-tuning than linear"
+        },
+        {
+          "name": "Warmup Steps",
+          "logoAlt": "🌡️",
+          "config": "warmup_steps=50",
+          "useCase": "Gradually increase LR at start",
+          "whyUsed": "Prevents gradient explosion when LoRA weights are randomly initialized"
+        },
+        {
+          "name": "Weight Decay",
+          "logoAlt": "⚖️",
+          "config": "weight_decay=0.01",
+          "useCase": "L2 regularization",
+          "whyUsed": "Standard for transformers, prevents LoRA weights growing too large"
+        },
+        {
+          "name": "Epochs",
+          "logoAlt": "🔁",
+          "config": "num_train_epochs=10",
+          "useCase": "Complete passes through data",
+          "whyUsed": "10 epochs with early stopping usually finds optimal. LoRA converges fast"
+        },
+        {
+          "name": "Optimizer",
+          "logoAlt": "🏎️",
+          "config": "optim='adamw_torch_fused'",
+          "useCase": "Weight update algorithm",
+          "whyUsed": "Fused AdamW is 5-10% faster than standard via kernel fusion"
+        },
+        {
+          "name": "Precision",
+          "logoAlt": "🎯",
+          "config": "fp16=True, bf16=False",
+          "useCase": "Mixed precision training",
+          "whyUsed": "T4 has FP16 tensor cores. BF16 not optimal on Turing architecture"
+        },
+        {
+          "name": "Sequence Length",
+          "logoAlt": "📏",
+          "config": "max_length=384",
+          "useCase": "Max tokens in input+output",
+          "whyUsed": "Medical reports are ~100-200 words. 384 sufficient, saves VRAM"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Evaluation Metrics",
+      "icon": "📊",
+      "color": "#3F51B5",
+      "gradient": "linear-gradient(135deg, #4facfe, #00f2fe)",
+      "description": "Text generation quality measurements",
+      "items": [
+        {
+          "name": "BLEU Score",
+          "logoAlt": "🔵",
+          "library": "evaluate.load('sacrebleu')",
+          "useCase": "N-gram precision between generated and reference",
+          "whyUsed": "Standard for text generation - measures word/phrase overlap",
+          "range": "0-100 (higher is better)",
+          "alternatives": ["METEOR", "chrF", "BERTScore"]
+        },
+        {
+          "name": "ROUGE-1",
+          "logoAlt": "🔴",
+          "library": "evaluate.load('rouge')",
+          "useCase": "Unigram recall",
+          "whyUsed": "Measures if generated text contains key words from reference",
+          "range": "0-1 (higher is better)"
+        },
+        {
+          "name": "ROUGE-2",
+          "logoAlt": "🟠",
+          "useCase": "Bigram recall",
+          "whyUsed": "Captures phrase-level overlap, not just single words"
+        },
+        {
+          "name": "ROUGE-L",
+          "logoAlt": "🟡",
+          "useCase": "Longest common subsequence",
+          "whyUsed": "Good for medical reports - captures key info even if wording differs"
+        },
+        {
+          "name": "Training Loss",
+          "logoAlt": "📉",
+          "metric": "Cross-Entropy Loss",
+          "useCase": "How well model predicts next token",
+          "whyUsed": "Directly optimized. Expect: ~1.0→~0.05 over training",
+          "interpretation": "Lower is better"
+        },
+        {
+          "name": "Validation Loss",
+          "logoAlt": "📈",
+          "metric": "eval_loss",
+          "useCase": "Generalization measurement",
+          "whyUsed": "Used for early stopping and best model selection",
+          "interpretation": "If eval↑ while train↓ → overfitting"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Callbacks & Control",
+      "icon": "🎮",
+      "color": "#795548",
+      "gradient": "linear-gradient(135deg, #d299c2, #fef9d7)",
+      "description": "Training control mechanisms and automation",
+      "items": [
+        {
+          "name": "Early Stopping",
+          "logoAlt": "🛑",
+          "config": {
+            "patience": 3,
+            "threshold": 0.001
+          },
+          "useCase": "Stop when validation loss plateaus",
+          "whyUsed": "Prevents overfitting, saves time. Stop if no 0.001 improvement for 3 evals",
+          "alternatives": ["No early stopping", "patience=5 (more tolerance)"]
+        },
+        {
+          "name": "Checkpoint Saving",
+          "logoAlt": "💾",
+          "config": {
+            "save_steps": 250,
+            "save_total_limit": 3
+          },
+          "useCase": "Save model periodically",
+          "whyUsed": "Colab can disconnect. Every 250 steps ≈ 2 epochs. Limit 3 saves disk"
+        },
+        {
+          "name": "Best Model Loading",
+          "logoAlt": "🏆",
+          "config": {
+            "load_best_model_at_end": true,
+            "metric_for_best_model": "eval_loss"
+          },
+          "useCase": "Revert to best checkpoint after training",
+          "whyUsed": "Final epoch may be overfit. Keep the actually-best model"
+        },
+        {
+          "name": "DataLoader Workers",
+          "logoAlt": "👷",
+          "config": "dataloader_num_workers=4",
+          "useCase": "Parallel data loading",
+          "whyUsed": "4 workers keep GPU fed. Colab has 2 cores, 4 workers is efficient"
+        },
+        {
+          "name": "Progress Callback",
+          "logoAlt": "📋",
+          "config": "Custom ProgressCallback",
+          "useCase": "Log training progress every 50 steps",
+          "whyUsed": "Visual feedback: loss and learning rate at each checkpoint"
+        },
+        {
+          "name": "Drive Backup",
+          "logoAlt": "☁️",
+          "config": "Auto-save to /content/drive/MyDrive/",
+          "useCase": "Persist checkpoints across sessions",
+          "whyUsed": "Colab's /content/ is ephemeral. Drive survives disconnections"
+        }
+      ]
+    }
+  ],
+  "quickReference": {
+    "model": "PaliGemma-3B-pt-224",
+    "quantization": "4-bit NF4",
+    "fineTuning": "LoRA r=16, α=32",
+    "computeDtype": "FP16",
+    "effectiveBatch": "32 (4×8)",
+    "learningRate": "2e-4",
+    "scheduler": "Cosine",
+    "epochs": "10 + early stopping",
+    "dataSplit": "80/10/10 stratified",
+    "metrics": "BLEU, ROUGE, Loss",
+    "trainableParams": "0.23%"
+  },
+  "colorPalette": {
+    "libraries": "#4CAF50",
+    "model": "#2196F3",
+    "quantization": "#9C27B0",
+    "lora": "#FF9800",
+    "datasets": "#00BCD4",
+    "dataProcessing": "#E91E63",
+    "hyperparameters": "#673AB7",
+    "evaluation": "#3F51B5",
+    "callbacks": "#795548"
+  }
+}

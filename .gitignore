@@ -1,0 +1,50 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Model checkpoints and outputs (too large for git)
+checkpoints/
+outputs/
+results/
+*.pt
+*.bin
+*.safetensors
+*.gguf
+
+# Dataset files (too large)
+*.csv
+*.tsv
+*.parquet
+data/
+
+# Images
+*.png
+*.jpg
+*.jpeg
+*.dcm
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+tensorboard_logs/
+logs/
+wandb/
+
+# HuggingFace cache
+.cache/
