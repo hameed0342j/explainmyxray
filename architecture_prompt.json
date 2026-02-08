@@ -192,13 +192,13 @@
         "breakdown": [
           { "component": "Base model (4-bit NF4)", "usage": "~2.5 GB" },
           { "component": "LoRA adapters (bf16)", "usage": "~0.5 GB" },
-          { "component": "Optimizer states (AdamW)", "usage": "~1.5 GB" },
+          { "component": "Optimizer states (8-bit paged AdamW)", "usage": "~0.5 GB" },
           { "component": "Activations (batch=1 + grad ckpt)", "usage": "~3.0 GB" },
           { "component": "CUDA overhead + KV cache", "usage": "~1.5 GB" },
-          { "component": "Headroom / safety", "usage": "~3.0 GB" }
+          { "component": "Headroom / safety", "usage": "~4.0 GB" }
         ],
-        "totalUsed": "~9.0 GB",
-        "utilization": "75%"
+        "totalUsed": "~8.0 GB",
+        "utilization": "67%"
       },
       "items": [
         {
@@ -530,9 +530,10 @@
         {
           "name": "Optimizer",
           "logoAlt": "🏎️",
-          "config": "optim='adamw_torch_fused'",
-          "useCase": "Fused kernel AdamW for speed",
-          "whyUsed": "5-10% faster than standard AdamW via CUDA kernel fusion. Required: PyTorch 2.x + GPU"
+          "config": "optim='paged_adamw_8bit'",
+          "useCase": "8-bit AdamW with CPU paging for VRAM efficiency",
+          "whyUsed": "Stores optimizer states in 8-bit instead of 32-bit → saves ~1 GB VRAM. CPU paging offloads states when VRAM is tight. bitsandbytes handles it automatically. No accuracy loss vs 32-bit AdamW",
+          "alternatives": ["adamw_torch_fused (32-bit, +1 GB VRAM)", "adafactor (less stable)", "SGD (no momentum memory)"]
         },
         {
           "name": "Precision",

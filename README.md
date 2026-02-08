@@ -440,16 +440,16 @@ In **VS Code**, the notebook automatically uses the right environment if you sel
 | Google Colab (free) | T4 | 16 GB | ~10-14 hours |
 | Google Colab Pro | A100 | 40 GB | ~3-5 hours |
 
-**VRAM Usage During Training (~9 GB of 12 GB):**
+**VRAM Usage During Training (~8 GB of 12 GB):**
 
 | Component | VRAM |
 |-----------|------|
 | Base model (4-bit quantized) | ~2.5 GB |
 | LoRA adapter weights | ~0.5 GB |
-| Optimizer states (AdamW) | ~1.5 GB |
+| Optimizer states (8-bit paged AdamW) | ~0.5 GB |
 | Activations (batch=1 + gradient checkpointing) | ~3.0 GB |
 | CUDA overhead | ~1.5 GB |
-| **Total** | **~9.0 GB** |
+| **Total** | **~8.0 GB** |
 
 ---
 
