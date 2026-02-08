@@ -187,9 +187,9 @@ The notebook referenced `HF_TOKEN` in the model loading cell, but:
 from huggingface_hub import login
 
 # Token from user's other notebook (train_medgemma.ipynb)
-HF_TOKEN = "REDACTED_TOKEN_USE_ENV_VAR"
+HF_TOKEN = os.environ.get("HF_TOKEN", "")  # Set in .env file
 
-login(token=HF_TOKEN)
+login(token=HF_TOKEN) if HF_TOKEN else login()
 print("✅ Logged in to Hugging Face!")
 ```
 
@@ -231,8 +231,8 @@ Inserted a NEW code cell after the markdown header:
 # ============================================================
 from huggingface_hub import login
 
-HF_TOKEN = "REDACTED_TOKEN_USE_ENV_VAR"
-login(token=HF_TOKEN)
+HF_TOKEN = os.environ.get("HF_TOKEN", "")  # Set in .env file
+login(token=HF_TOKEN) if HF_TOKEN else login()
 
 # Also handle Kaggle auth
 import os
