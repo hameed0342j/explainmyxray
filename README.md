@@ -65,6 +65,30 @@ ExplainMyXray/
 
 ---
 
+## ⚠️ Security — API Keys & Tokens
+
+**NEVER hardcode tokens in code files.** This project uses environment variables for all secrets.
+
+### How to Set Up Your Token
+
+1. Copy the example env file:
+   ```cmd
+   copy .env.example .env
+   ```
+2. Open `.env` in a text editor and paste your HuggingFace token:
+   ```
+   HF_TOKEN=hf_your_actual_token_here
+   ```
+3. The `.env` file is in `.gitignore` — it will NEVER be pushed to GitHub
+
+**Alternative (simpler):** Just run this once in your terminal and it saves the token globally:
+```cmd
+huggingface-cli login
+```
+Then paste your token when prompted. You won't need a `.env` file at all.
+
+---
+
 ## Windows RTX 5080 Laptop — Complete Setup Guide (Step by Step)
 
 > **This section is written for you if you have a Windows laptop with an NVIDIA RTX 5080 GPU.**

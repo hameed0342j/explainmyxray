@@ -3,6 +3,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# ⚠️ SECRETS — NEVER COMMIT THESE
+.env
+.env.local
+.env.production
+*.secret
+*token*
+!.env.example
+
 # Virtual environment
 venv/
 env/
