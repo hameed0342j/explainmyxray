@@ -1,0 +1,1292 @@
+{
+  "metadata": {
+    "title": "ExplainMyXray v3",
+    "subtitle": "Research-Enhanced Medical CXR Analysis Architecture",
+    "version": "3.0",
+    "environment": "RTX 5080 16 GB / VS Code / Local Training",
+    "generatedDate": "2026-02-10",
+    "researchReport": "DEEP_RESEARCH_REPORT.md",
+    "theme": {
+      "primaryColor": "#4F46E5",
+      "secondaryColor": "#7C3AED",
+      "accentColor": "#06B6D4",
+      "successColor": "#10B981",
+      "warningColor": "#F59E0B",
+      "dangerColor": "#EF4444",
+      "backgroundColor": "#0F172A",
+      "surfaceColor": "#1E293B",
+      "textColor": "#F8FAFC",
+      "mutedColor": "#94A3B8"
+    }
+  },
+  "sections": [
+    {
+      "id": 1,
+      "title": "Libraries & Frameworks",
+      "icon": "📚",
+      "color": "#4F46E5",
+      "gradient": "from-indigo-500 to-blue-600",
+      "description": "Core Python packages powering the v3 pipeline. All versions verified for mutual compatibility with Transformers v5.",
+      "items": [
+        {
+          "name": "Transformers",
+          "logoAlt": "HuggingFace Transformers",
+          "version": "≥5.1.0",
+          "useCase": "Model loading (AutoModelForImageTextToText), tokenization (AutoProcessor), generation, model hub integration",
+          "whyUsed": "First major version in 5 years. Dynamic weight loading, default dtype 'auto', tokenizer backend refactoring. Required for MedGemma 1.5 support.",
+          "v2Version": "≥4.52.0",
+          "breakingChanges": "Min PyTorch 2.4, default dtype changed to 'auto', tokenizer class renaming"
+        },
+        {
+          "name": "TRL",
+          "logoAlt": "Transformer Reinforcement Learning",
+          "version": "≥0.27.2",
+          "useCase": "SFTTrainer for supervised fine-tuning with chat template support, DataCollatorForCompletionOnlyLM",
+          "whyUsed": "v0.27.0 adds forward_masked_logits (50% VRAM reduction), GDPO/CISPO loss. v0.27.2 adds Transformers v5 compatibility.",
+          "v2Version": "≥0.17.0",
+          "breakingChanges": "New API for loss functions, vLLM integration"
+        },
+        {
+          "name": "PEFT",
+          "logoAlt": "Parameter-Efficient Fine-Tuning",
+          "version": "≥0.18.1",
+          "useCase": "LoRA/DoRA/DeLoRA adapter injection, adapter merging, export to Hub",
+          "whyUsed": "v0.18.0 adds DoRA (arXiv:2402.09353), DeLoRA (arXiv:2503.18225), RoAd, ensure_weight_tying. v0.18.1 adds Transformers v5 fixes.",
+          "v2Version": "≥0.15.0",
+          "breakingChanges": "Dropped Python 3.9, requires Transformers v5 for PEFT ≥0.18.0"
+        },
+        {
+          "name": "BitsAndBytes",
+          "logoAlt": "BitsAndBytes Quantization",
+          "version": "≥0.45.0",
+          "useCase": "4-bit NF4 quantization, double quantization, paged_adamw_8bit optimizer",
+          "whyUsed": "Enables 4B model fine-tuning on 12 GB VRAM. NF4 provides optimal quantization for normally distributed weights.",
+          "v2Version": "≥0.45.0",
+          "breakingChanges": "None"
+        },
+        {
+          "name": "Accelerate",
+          "logoAlt": "HuggingFace Accelerate",
+          "version": "≥1.5.0",
+          "useCase": "device_map='auto', mixed precision training, model loading utilities",
+          "whyUsed": "Required by Transformers for model distribution and mixed-precision support.",
+          "v2Version": "≥1.5.0",
+          "breakingChanges": "None"
+        },
+        {
+          "name": "PyTorch",
+          "logoAlt": "PyTorch Framework",
+          "version": "≥2.4.0",
+          "useCase": "Core tensor operations, autograd, CUDA integration, BF16 tensor cores, torch.compile",
+          "whyUsed": "Minimum required by Transformers v5. BF16 tensor core support for RTX 5080. expandable_segments for memory management.",
+          "v2Version": "≥2.0",
+          "breakingChanges": "Minimum version bump required by Transformers v5"
+        },
+        {
+          "name": "Pillow",
+          "logoAlt": "Python Imaging Library",
+          "version": "≥10.0",
+          "useCase": "X-ray image loading, resizing, format conversion for MedGemma processor",
+          "whyUsed": "MedGemma AutoProcessor expects PIL Image input for vision encoding.",
+          "v2Version": "latest",
+          "breakingChanges": "None"
+        },
+        {
+          "name": "Matplotlib",
+          "logoAlt": "Matplotlib Visualization",
+          "version": "latest",
+          "useCase": "Side-by-side X-ray visualization, training curves, finding distribution plots, overlay rendering",
+          "whyUsed": "Static visualization of CXR with color-coded localization overlays.",
+          "v2Version": "latest",
+          "breakingChanges": "None"
+        },
+        {
+          "name": "Pandas",
+          "logoAlt": "Pandas Data Analysis",
+          "version": "latest",
+          "useCase": "PadChest CSV parsing, label extraction, finding/location splitting, difficulty scoring",
+          "whyUsed": "160K-row CSV with nested list columns requires robust parsing.",
+          "v2Version": "latest",
+          "breakingChanges": "None"
+        },
+        {
+          "name": "Scikit-learn",
+          "logoAlt": "Scikit-learn ML",
+          "version": "latest",
+          "useCase": "Train/val/test splitting with stratification, classification_report, per-finding P/R/F1",
+          "whyUsed": "Standard metrics computation for multi-label classification evaluation.",
+          "v2Version": "latest",
+          "breakingChanges": "None"
+        },
+        {
+          "name": "FastAPI",
+          "logoAlt": "FastAPI Web Framework",
+          "version": "latest",
+          "useCase": "REST API serving: POST /predict with X-ray image → structured report + visualization",
+          "whyUsed": "Async Python API framework for production serving. Pydantic schema validation, automatic OpenAPI docs.",
+          "v2Version": "N/A (new in v3)",
+          "breakingChanges": "N/A"
+        },
+        {
+          "name": "Gradio",
+          "logoAlt": "Gradio ML Demo",
+          "version": "latest",
+          "useCase": "Interactive web UI for X-ray upload, analysis, and visualization demo",
+          "whyUsed": "Industry standard for ML demos. Many MedGemma HuggingFace Spaces use Gradio.",
+          "v2Version": "N/A (new in v3)",
+          "breakingChanges": "N/A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Model Selection",
+      "icon": "🧠",
+      "color": "#7C3AED",
+      "gradient": "from-violet-500 to-purple-600",
+      "description": "Primary model upgraded to MedGemma 1.5 4B-it — same architecture, better benchmarks, native bounding box localization.",
+      "items": [
+        {
+          "name": "MedGemma 1.5 4B-it",
+          "logoAlt": "Google MedGemma 1.5",
+          "huggingfaceId": "google/medgemma-1.5-4b-it",
+          "selected": true,
+          "specs": {
+            "parameters": "4B",
+            "visionEncoder": "Medical SigLIP (896×896, CXR/derm/ophth/histo/CT/MRI pre-trained)",
+            "decoder": "Gemma 3 (4B, 128K context, GQA, BF16)",
+            "vramAt4Bit": "~2.5 GB",
+            "releaseDate": "Jan 13, 2026",
+            "version": "v1.5.0",
+            "license": "HAI-DEF License",
+            "downloads": "161K/month",
+            "arxiv": "arXiv:2507.05201"
+          },
+          "newInV15": [
+            "Native bounding box localization (Chest ImaGenome IoU: 3.1→38.0, 12× improvement)",
+            "Longitudinal CXR comparison (MS-CXR-T accuracy: 61.1→65.7)",
+            "3D CT/MRI slice interpretation",
+            "Whole-slide image (WSI) histopathology support",
+            "Document understanding (PDF→JSON EHR extraction, F1=91.0)",
+            "Electronic Health Record (EHR) understanding",
+            "Greedy decoding by default (more deterministic outputs)"
+          ],
+          "benchmarks": {
+            "mimicCxrF1": 89.5,
+            "chexpertF1": 48.2,
+            "cxr14F1": 48.4,
+            "chestImaGenomeIoU": 38.0,
+            "msCxrTAccuracy": 65.7,
+            "medQA": 69.1,
+            "ehrQA": 89.6
+          },
+          "whyUpgraded": "Drop-in replacement for MedGemma 4B-it v1. Same architecture, same VRAM, better accuracy (+0.6% CXR F1), dramatically improved localization (12× IoU). No reason not to upgrade."
+        },
+        {
+          "name": "MedGemma 4B-it (v1)",
+          "logoAlt": "Google MedGemma v1",
+          "huggingfaceId": "google/medgemma-4b-it",
+          "selected": false,
+          "specs": {
+            "parameters": "4B",
+            "visionEncoder": "Medical SigLIP (896×896)",
+            "decoder": "Gemma 3 (4B)",
+            "vramAt4Bit": "~2.5 GB",
+            "releaseDate": "Jul 9, 2025",
+            "version": "v1.0.1"
+          },
+          "benchmarks": {
+            "mimicCxrF1": 88.9,
+            "chexpertF1": 48.1,
+            "chestImaGenomeIoU": 3.1
+          },
+          "rejectionReason": "Superseded by MedGemma 1.5 with better accuracy and native localization. Keep only as fallback."
+        },
+        {
+          "name": "CheXagent-2-3b",
+          "logoAlt": "Stanford CheXagent",
+          "huggingfaceId": "StanfordAIMI/CheXagent-2-3b",
+          "selected": false,
+          "specs": {
+            "parameters": "3B",
+            "architecture": "Phi-based",
+            "vramAt4Bit": "~1.5 GB",
+            "license": "MIT",
+            "arxiv": "arXiv:2401.12208"
+          },
+          "rejectionReason": "Use as ensemble partner, not primary. Older Phi architecture, pinned to transformers==4.40.0, requires trust_remote_code."
+        },
+        {
+          "name": "PaliGemma 2 3B",
+          "logoAlt": "Google PaliGemma 2",
+          "huggingfaceId": "google/paligemma2-3b-pt-896",
+          "selected": false,
+          "rejectionReason": "No medical pretraining. We moved away from PaliGemma in v2 for exactly this reason."
+        },
+        {
+          "name": "LLaVA-Med 7B",
+          "logoAlt": "Microsoft LLaVA-Med",
+          "huggingfaceId": "microsoft/llava-med-7b-delta",
+          "selected": false,
+          "rejectionReason": "7B is tight for 12 GB QLoRA. Old CLIP ViT-L/14 vision encoder (224px) vs MedGemma's Medical SigLIP (896px). 2023 architecture."
+        },
+        {
+          "name": "InternVL2-8B",
+          "logoAlt": "OpenGVLab InternVL2",
+          "huggingfaceId": "OpenGVLab/InternVL2-8B",
+          "selected": false,
+          "rejectionReason": "8B parameters won't fit 12 GB for QLoRA training. No medical pretraining."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Quantization & Memory Budget",
+      "icon": "💾",
+      "color": "#06B6D4",
+      "gradient": "from-cyan-500 to-teal-600",
+      "description": "Same NF4 quantization as v2, but forward_masked_logits from TRL v0.27.0 saves ~50% VRAM during forward pass.",
+      "memoryBudget": {
+        "totalVRAM": "12 GB (RTX 5080)",
+        "breakdown": [
+          { "component": "MedGemma 1.5 4B (NF4 4-bit)", "vram": "~2.5 GB", "notes": "Same as v1 — identical architecture" },
+          { "component": "LoRA/DoRA Adapters (r=32)", "vram": "~0.1 GB", "notes": "DoRA adds magnitude component, negligible extra" },
+          { "component": "Optimizer States (paged_adamw_8bit)", "vram": "~1.0 GB", "notes": "Paged to system RAM when needed" },
+          { "component": "Activations + Gradients", "vram": "~2.5 GB", "notes": "With gradient_checkpointing=True" },
+          { "component": "Forward Pass Logits", "vram": "~0.8 GB → ~0.4 GB", "notes": "forward_masked_logits saves 50%" },
+          { "component": "CUDA Overhead + Buffers", "vram": "~1.0 GB", "notes": "expandable_segments=True for efficiency" }
+        ],
+        "totalUsed": "~7.5 GB (was ~8 GB in v2)",
+        "headroom": "~4.5 GB",
+        "headroomNote": "Extra headroom allows: batch_size=2, LoRA r=64, or MedSAM co-loading (~1 GB)"
+      },
+      "items": [
+        {
+          "name": "NF4 (4-bit NormalFloat)",
+          "config": "bnb_4bit_quant_type='nf4'",
+          "useCase": "Base model weight quantization",
+          "whyUsed": "Optimal quantization for normally distributed transformer weights. 4× memory reduction."
+        },
+        {
+          "name": "Double Quantization",
+          "config": "bnb_4bit_use_double_quant=True",
+          "useCase": "Quantize the quantization constants themselves",
+          "whyUsed": "Saves additional ~0.4 GB with no accuracy impact."
+        },
+        {
+          "name": "BF16 Compute dtype",
+          "config": "bnb_4bit_compute_dtype=torch.bfloat16",
+          "useCase": "Computation precision for dequantized operations",
+          "whyUsed": "BF16 tensor cores on RTX 5080 (Blackwell). Better dynamic range than FP16."
+        },
+        {
+          "name": "Gradient Checkpointing",
+          "config": "gradient_checkpointing=True",
+          "useCase": "Trade compute for memory by recomputing activations during backward pass",
+          "whyUsed": "Saves ~40% activation memory. Essential for fine-tuning large models."
+        },
+        {
+          "name": "TF32 Math Mode",
+          "config": "tf32=True",
+          "useCase": "Use TF32 tensor cores for matrix multiplications",
+          "whyUsed": "2× throughput vs FP32 with negligible precision loss."
+        },
+        {
+          "name": "Expandable Segments",
+          "config": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",
+          "useCase": "CUDA memory allocator optimization",
+          "whyUsed": "Reduces fragmentation, prevents OOM on long sequences."
+        },
+        {
+          "name": "forward_masked_logits",
+          "config": "SFTConfig(forward_masked_logits=True)",
+          "useCase": "Only compute logits for tokens present in batch, not full vocabulary",
+          "whyUsed": "NEW in TRL v0.27.0. Reduces forward pass VRAM by up to 50%. Unlocks batch_size=2 or LoRA r=64.",
+          "v2Status": "Not available (TRL 0.17.0)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "LoRA / DoRA Configuration",
+      "icon": "🔧",
+      "color": "#8B5CF6",
+      "gradient": "from-violet-500 to-indigo-600",
+      "description": "Upgraded from standard LoRA to DoRA for consistent accuracy improvement. Same rank and alpha as v2.",
+      "items": [
+        {
+          "name": "LoRA Rank (r)",
+          "config": "r=32",
+          "useCase": "Low-rank decomposition dimension",
+          "whyUsed": "r=32 balances capacity and efficiency. With forward_masked_logits freeing VRAM, r=64 is now possible if needed."
+        },
+        {
+          "name": "LoRA Alpha (α)",
+          "config": "lora_alpha=64",
+          "useCase": "Scaling factor (effective scale = α/r = 2.0)",
+          "whyUsed": "2× scaling is standard for medical fine-tuning. Maintains gradient magnitude."
+        },
+        {
+          "name": "Target Modules",
+          "config": "target_modules='all-linear'",
+          "useCase": "Apply LoRA/DoRA to all linear layers",
+          "whyUsed": "Maximum capacity for medical knowledge injection. ~100M trainable parameters (<2.5% of 4B)."
+        },
+        {
+          "name": "Modules to Save",
+          "config": "modules_to_save=['lm_head', 'embed_tokens']",
+          "useCase": "Fully fine-tune embedding and output head layers",
+          "whyUsed": "Medical vocabulary adaptation. ensure_weight_tying=True keeps them synchronized."
+        },
+        {
+          "name": "DoRA (Weight-Decomposed)",
+          "config": "use_dora=True",
+          "useCase": "Decompose LoRA updates into magnitude and direction components",
+          "whyUsed": "NEW in v3. DoRA consistently outperforms standard LoRA by 1-3% across tasks (arXiv:2402.09353). Drop-in replacement, negligible VRAM increase.",
+          "v2Config": "use_dora=False (standard LoRA)"
+        },
+        {
+          "name": "Weight Tying",
+          "config": "ensure_weight_tying=True",
+          "useCase": "Synchronize lm_head and embed_tokens when both in modules_to_save",
+          "whyUsed": "NEW in PEFT v0.18.0. Prevents weight divergence between input/output embeddings.",
+          "v2Config": "Not available"
+        },
+        {
+          "name": "Dropout",
+          "config": "lora_dropout=0.05",
+          "useCase": "Regularization for LoRA adapter layers",
+          "whyUsed": "Light dropout prevents overfitting on 160K-image dataset."
+        },
+        {
+          "name": "Task Type",
+          "config": "task_type='CAUSAL_LM'",
+          "useCase": "Causal language modeling for autoregressive text generation",
+          "whyUsed": "MedGemma is an instruction-tuned causal LM."
+        }
+      ],
+      "summary": {
+        "trainableParams": "~100M (<2.5% of 4B)",
+        "method": "DoRA (was LoRA in v2)",
+        "effectiveScale": "α/r = 64/32 = 2.0",
+        "adapterSize": "~400 MB on disk"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Dataset — BIMCV PadChest",
+      "icon": "📊",
+      "color": "#10B981",
+      "gradient": "from-emerald-500 to-green-600",
+      "description": "160K+ CXR images with 174 radiographic findings and 104 anatomical locations. Unchanged from v2.",
+      "items": [
+        {
+          "name": "Total Images",
+          "value": "160,000+",
+          "details": "Multi-label CXR dataset from Hospital San Juan, Spain"
+        },
+        {
+          "name": "Radiographic Findings",
+          "value": "174 distinct findings",
+          "details": "e.g., cardiomegaly, pleural effusion, pneumothorax, atelectasis, consolidation"
+        },
+        {
+          "name": "Anatomical Locations",
+          "value": "104 distinct locations",
+          "details": "e.g., right lung, left costophrenic angle, mediastinum, cardiac silhouette"
+        },
+        {
+          "name": "Storage",
+          "value": "~1 TB across sub-folders 0-37",
+          "details": "Google Drive for Desktop via G: or /mnt/google-drive"
+        },
+        {
+          "name": "Label Format",
+          "value": "Nested lists in CSV columns",
+          "details": "Labels column: \"['finding1', 'finding2']\", parsed with safe_parse_list()"
+        },
+        {
+          "name": "Key Finding Categories",
+          "value": "6 high-priority groups",
+          "details": "Normal, Cardiomegaly, Pleural Effusion, Pneumothorax, Nodule/Mass, Consolidation/Pneumonia"
+        }
+      ],
+      "v1Comparison": {
+        "v1Dataset": "chest-xray-pneumonia (Kaggle)",
+        "v1Size": "~11,000 images",
+        "v1Labels": "Normal/Pneumonia (binary)",
+        "v3Dataset": "BIMCV PadChest",
+        "v3Size": "160,000+ images",
+        "v3Labels": "174 findings + 104 locations (multi-label)"
+      },
+      "notUsed": [
+        {
+          "name": "MIMIC-CXR",
+          "reason": "Requires PhysioNet credentialing. Use for evaluation benchmark only.",
+          "futureUse": "v4: Add as secondary training data if credentialed."
+        },
+        {
+          "name": "CheXpert",
+          "reason": "Stanford DUA required. Use for evaluation benchmark only.",
+          "futureUse": "v4: Evaluation reference."
+        },
+        {
+          "name": "VinDr-CXR",
+          "reason": "18K images (smaller). Has radiologist bounding box annotations (3 annotators).",
+          "futureUse": "v3 medium-term: Use for localization accuracy evaluation."
+        },
+        {
+          "name": "Chest ImaGenome",
+          "reason": "Requires PhysioNet. MedGemma 1.5 already trained on this (IoU=38.0).",
+          "futureUse": "v3 long-term: Fine-tune localization specifically."
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Data Pipeline & Preprocessing",
+      "icon": "⚙️",
+      "color": "#F59E0B",
+      "gradient": "from-amber-500 to-yellow-600",
+      "description": "Enhanced data pipeline with difficulty scoring for curriculum learning and augmentation support.",
+      "items": [
+        {
+          "name": "CSV Parsing",
+          "config": "safe_parse_list(): ast.literal_eval with fallback to manual bracket parsing",
+          "useCase": "Parse nested string lists from PadChest CSV: \"['finding1', 'finding2']\" → list",
+          "whyUsed": "PadChest labels are stored as string representations of Python lists."
+        },
+        {
+          "name": "Finding/Location Splitting",
+          "config": "split_findings_locations(): separate Labels column into findings + locations",
+          "useCase": "Split combined labels into FINDINGS and LOCATIONS for structured output",
+          "whyUsed": "Enables structured report generation: FINDINGS: ..., LOCATIONS: ..., IMPRESSION: ..."
+        },
+        {
+          "name": "Image Path Resolution",
+          "config": "Google Drive sub-folders 0-37 via ImageDir column",
+          "useCase": "Resolve sub-folder/filename to absolute path for image loading",
+          "whyUsed": "PadChest images spread across 38 sub-folders, ~1 TB total."
+        },
+        {
+          "name": "Chat Template",
+          "config": "apply_chat_template() with system + user + assistant turns",
+          "useCase": "Format input as: system prompt → user (image + instructions) → assistant (structured report)",
+          "whyUsed": "MedGemma 1.5 expects chat-formatted input with image tokens."
+        },
+        {
+          "name": "Structured Output Format",
+          "config": "FINDINGS: ... | LOCATIONS: ... | IMPRESSION: ...",
+          "useCase": "Train model to generate structured medical reports",
+          "whyUsed": "Enables automated extraction and evaluation of individual components."
+        },
+        {
+          "name": "Curriculum Learning",
+          "config": "sort_by_difficulty(): label_count + rarity_score → difficulty bucket",
+          "useCase": "Train on easier examples first (single common finding), progress to harder (multi-label rare)",
+          "whyUsed": "15-20% faster convergence and improved rare finding accuracy (Bengio et al., 2009)."
+        },
+        {
+          "name": "Data Split",
+          "config": "train/val/test = 90/5/5 with stratification",
+          "useCase": "Stratified splitting to maintain finding distribution across splits",
+          "whyUsed": "5% validation for early stopping, 5% held-out test for final evaluation."
+        },
+        {
+          "name": "CXR Augmentation",
+          "config": "Albumentations: rotation ±10°, brightness ±0.1, contrast ±0.1",
+          "useCase": "Data augmentation for training robustness",
+          "whyUsed": "NEW in v3. Medical-appropriate augmentations that don't alter pathology appearance.",
+          "v2Status": "Not implemented"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Training Hyperparameters",
+      "icon": "🎯",
+      "color": "#EF4444",
+      "gradient": "from-red-500 to-rose-600",
+      "description": "Optimized for RTX 5080 12 GB with forward_masked_logits. DoRA replaces standard LoRA.",
+      "items": [
+        {
+          "name": "Batch Size",
+          "config": "per_device_train_batch_size=1 (optionally 2 with forward_masked_logits)",
+          "useCase": "Images per forward pass",
+          "whyUsed": "Batch=1 is safe default. forward_masked_logits frees ~0.4 GB, enabling batch=2 experiment."
+        },
+        {
+          "name": "Gradient Accumulation",
+          "config": "gradient_accumulation_steps=32",
+          "useCase": "Simulate larger batch size: effective_batch = 1 × 32 = 32",
+          "whyUsed": "32 effective batch provides stable gradients for medical fine-tuning."
+        },
+        {
+          "name": "Learning Rate",
+          "config": "learning_rate=1e-4",
+          "useCase": "Peak learning rate for cosine schedule",
+          "whyUsed": "Standard for QLoRA fine-tuning (arXiv:2305.14314). May adjust to 5e-5 for DoRA."
+        },
+        {
+          "name": "LR Scheduler",
+          "config": "lr_scheduler_type='cosine'",
+          "useCase": "Cosine decay with warmup",
+          "whyUsed": "Smooth decay prevents training instability in later epochs."
+        },
+        {
+          "name": "Warmup Ratio",
+          "config": "warmup_ratio=0.05",
+          "useCase": "5% of total steps for linear warmup",
+          "whyUsed": "Gradual learning rate increase prevents early training divergence."
+        },
+        {
+          "name": "Epochs",
+          "config": "num_train_epochs=5",
+          "useCase": "Maximum training epochs (early stopping may terminate sooner)",
+          "whyUsed": "5 epochs with early stopping patience=5 allows convergence without overfitting."
+        },
+        {
+          "name": "Optimizer",
+          "config": "optim='paged_adamw_8bit'",
+          "useCase": "8-bit Adam with paged states (overflow to system RAM)",
+          "whyUsed": "Saves ~1 GB VRAM vs standard AdamW. Pages to RAM when GPU memory is tight."
+        },
+        {
+          "name": "Mixed Precision",
+          "config": "bf16=True, fp16=False",
+          "useCase": "BFloat16 training precision",
+          "whyUsed": "RTX 5080 BF16 tensor cores. Better dynamic range than FP16, no loss scaling needed."
+        },
+        {
+          "name": "Gradient Clipping",
+          "config": "max_grad_norm=0.3",
+          "useCase": "Clip gradients to prevent explosive updates",
+          "whyUsed": "Conservative clipping (0.3 vs default 1.0) stabilizes QLoRA training."
+        },
+        {
+          "name": "Max Sequence Length",
+          "config": "max_seq_length=512",
+          "useCase": "Maximum token length for chat template + response",
+          "whyUsed": "512 tokens sufficient for structured CXR reports. Longer wastes memory."
+        },
+        {
+          "name": "forward_masked_logits",
+          "config": "forward_masked_logits=True",
+          "useCase": "Only compute logits for tokens in batch vocabulary, not full 256K vocab",
+          "whyUsed": "NEW in v3 (TRL v0.27.0). Reduces forward pass VRAM by up to 50%.",
+          "v2Status": "Not available"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Evaluation & Accuracy Target",
+      "icon": "📈",
+      "color": "#14B8A6",
+      "gradient": "from-teal-500 to-cyan-600",
+      "description": "Enhanced from soft-match only to multi-metric evaluation: soft match + RadGraph F1 + CheXbert + per-finding breakdown.",
+      "items": [
+        {
+          "name": "Exact Match Accuracy",
+          "config": "exact_match(predicted, ground_truth)",
+          "target": "≥80%",
+          "useCase": "Strict string comparison of full report",
+          "whyUsed": "Baseline metric. Typically lower than soft match due to synonym variations."
+        },
+        {
+          "name": "Soft Match Accuracy",
+          "config": "soft_match(predicted, ground_truth, threshold=0.85)",
+          "target": "≥95%",
+          "useCase": "Fuzzy matching allowing synonym substitution and partial credit",
+          "whyUsed": "Primary accuracy metric from v2. Accounts for legitimate report variations."
+        },
+        {
+          "name": "Micro Precision / Recall / F1",
+          "config": "sklearn.metrics.classification_report(micro)",
+          "target": "P≥93%, R≥93%, F1≥93%",
+          "useCase": "Per-finding precision and recall aggregated across all findings",
+          "whyUsed": "Multi-label classification metrics for 174-finding evaluation."
+        },
+        {
+          "name": "RadGraph F1",
+          "config": "radgraph_f1(generated_report, reference_report)",
+          "target": "≥0.40",
+          "useCase": "Extract clinical entities and relations → compute F1 between generated and reference",
+          "whyUsed": "NEW in v3. Industry-standard metric for report generation quality (arXiv:2106.14463). Measures clinical accuracy, not just lexical similarity.",
+          "v2Status": "Not implemented"
+        },
+        {
+          "name": "CheXbert F1",
+          "config": "chexbert_f1(generated_report, reference_labels)",
+          "target": "≥0.50",
+          "useCase": "Extract 14 CheXpert labels from generated report → compare with ground truth",
+          "whyUsed": "NEW in v3. Standardized CXR report evaluation via automated label extraction.",
+          "v2Status": "Not implemented"
+        },
+        {
+          "name": "Per-Finding Breakdown",
+          "config": "per_finding_report(predictions, labels, top_k=20)",
+          "target": "Top-6 findings: F1≥90%",
+          "useCase": "Individual P/R/F1 for each of 174 findings sorted by frequency",
+          "whyUsed": "Identifies weak findings for targeted improvement."
+        },
+        {
+          "name": "Localization IoU",
+          "config": "iou(predicted_bbox, ground_truth_bbox)",
+          "target": "≥0.30 (chest X-ray regions)",
+          "useCase": "Intersection over Union for MedGemma 1.5 native bounding box predictions",
+          "whyUsed": "NEW in v3. MedGemma 1.5 achieves IoU=38.0 on Chest ImaGenome zero-shot.",
+          "v2Status": "Text-based localization only, no IoU metric"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Disease Localization & Visualization",
+      "icon": "🎯",
+      "color": "#F97316",
+      "gradient": "from-orange-500 to-amber-600",
+      "description": "Upgraded from manual 26-region text mapping to MedGemma 1.5 native bounding boxes + MedSAM pixel-accurate masks.",
+      "items": [
+        {
+          "name": "MedGemma 1.5 Native Bounding Boxes",
+          "config": "Parse <box>y1 x1 y2 x2</box> tokens from model output",
+          "useCase": "Model directly predicts bounding box coordinates for detected findings",
+          "whyUsed": "NEW in v3. IoU=38.0 on Chest ImaGenome (12× improvement over v1). Eliminates manual coordinate mapping.",
+          "v2Method": "Manual 26-region text → coordinate lookup table"
+        },
+        {
+          "name": "MedSAM Pixel Segmentation",
+          "config": "MedSAM(prompt_bbox=medgemma_bbox) → binary_mask",
+          "useCase": "Convert bounding box to pixel-accurate segmentation mask",
+          "whyUsed": "NEW in v3. MedSAM (93M params, <1 GB) converts bbox prompt to precise anatomical mask. Clinically superior to rectangles.",
+          "v2Method": "Colored rectangles only"
+        },
+        {
+          "name": "26 Anatomical Region Mapping (legacy)",
+          "config": "region_coordinates: dict[str, tuple[x1,y1,x2,y2]]",
+          "useCase": "Fallback: map text location labels to pre-defined bounding box coordinates",
+          "whyUsed": "Kept as fallback for backward compatibility. MedGemma 1.5 native bbox is preferred."
+        },
+        {
+          "name": "GradCAM Attention Heatmaps",
+          "config": "gradcam(model.vision_encoder, target_layer=-1, input_image)",
+          "useCase": "Generate gradient-weighted activation maps showing where model 'looks'",
+          "whyUsed": "NEW in v3. Interpretability layer: shows which image regions influenced the diagnosis."
+        },
+        {
+          "name": "Color-Coded Overlays",
+          "config": "overlay(image, masks, colors=colorMap, alpha=0.4)",
+          "useCase": "Render translucent colored regions on X-ray for each finding",
+          "whyUsed": "Visual communication of findings to clinicians."
+        },
+        {
+          "name": "Side-by-Side Visualization",
+          "config": "plot_side_by_side(original, annotated, report_text)",
+          "useCase": "Display original X-ray next to annotated version with text report",
+          "whyUsed": "Primary output format for predict_xray() function."
+        }
+      ],
+      "colorMap": {
+        "cardiomegaly": "#FF6B6B",
+        "pleural_effusion": "#4ECDC4",
+        "pneumothorax": "#FFE66D",
+        "atelectasis": "#A8E6CF",
+        "consolidation": "#FF8A80",
+        "nodule": "#B39DDB",
+        "fracture": "#FFAB91",
+        "pneumonia": "#80CBC4",
+        "emphysema": "#CE93D8"
+      },
+      "v1Comparison": {
+        "v1": "No localization at all (PaliGemma 3B, binary classification)",
+        "v2": "26 anatomical regions, text-based lookup, colored rectangles",
+        "v3": "MedGemma 1.5 native bounding boxes + MedSAM pixel masks + GradCAM heatmaps"
+      }
+    },
+    {
+      "id": 10,
+      "title": "Callbacks & Training Control",
+      "icon": "🔄",
+      "color": "#EC4899",
+      "gradient": "from-pink-500 to-rose-600",
+      "description": "Enhanced callbacks with VRAM monitoring and accuracy-gated training.",
+      "items": [
+        {
+          "name": "Early Stopping",
+          "config": "EarlyStoppingCallback(early_stopping_patience=5, early_stopping_threshold=0.001)",
+          "useCase": "Stop training when validation loss stops improving for 5 evaluations",
+          "whyUsed": "Prevent overfitting and save compute time."
+        },
+        {
+          "name": "Best Model Selection",
+          "config": "load_best_model_at_end=True, metric_for_best_model='eval_loss'",
+          "useCase": "Auto-select model checkpoint with lowest validation loss",
+          "whyUsed": "Ensures final model is the best-performing, not just the last."
+        },
+        {
+          "name": "Checkpoint Management",
+          "config": "save_steps=200, save_total_limit=3",
+          "useCase": "Save checkpoint every 200 steps, keep only 3 most recent",
+          "whyUsed": "Disk space management while maintaining recovery points."
+        },
+        {
+          "name": "TensorBoard Logging",
+          "config": "report_to='tensorboard', logging_steps=10",
+          "useCase": "Log training loss, learning rate, grad norm every 10 steps",
+          "whyUsed": "Real-time training monitoring via TensorBoard."
+        },
+        {
+          "name": "W&B Logging",
+          "config": "report_to=['tensorboard', 'wandb']",
+          "useCase": "Log metrics to Weights & Biases for experiment tracking and comparison",
+          "whyUsed": "NEW in v3. Better experiment comparison, hyperparameter sweeps, model registry.",
+          "v2Status": "TensorBoard only"
+        },
+        {
+          "name": "VRAM Monitor Callback",
+          "config": "VRAMMonitorCallback(warning_threshold=0.90, oom_threshold=0.95)",
+          "useCase": "Log GPU memory usage per step, warn at 90%, emergency save at 95%",
+          "whyUsed": "NEW in v3. Prevent silent OOM crashes on 12 GB VRAM.",
+          "v2Status": "Manual monitoring only"
+        },
+        {
+          "name": "Memory Cleanup",
+          "config": "gc.collect() + torch.cuda.empty_cache() in on_step_end",
+          "useCase": "Periodic garbage collection to prevent memory buildup",
+          "whyUsed": "Essential for long training runs on limited VRAM."
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Deployment & System Setup",
+      "icon": "🚀",
+      "color": "#6366F1",
+      "gradient": "from-indigo-500 to-violet-600",
+      "description": "Enhanced deployment with FastAPI serving, Docker containerization, and CI/CD pipeline.",
+      "items": [
+        {
+          "name": "Install Scripts",
+          "config": "install.sh (Linux/macOS) + install.bat (Windows)",
+          "useCase": "Automated environment setup: venv, dependencies, GPU verification",
+          "whyUsed": "One-command setup for new developers."
+        },
+        {
+          "name": "VS Code IDE",
+          "config": ".vscode/{settings,launch,extensions,tasks}.json",
+          "useCase": "Standardized development environment with Python, Jupyter, Pylance, Ruff",
+          "whyUsed": "Consistent developer experience across team."
+        },
+        {
+          "name": "RTX 5080 GPU",
+          "config": "NVIDIA RTX 5080, 12 GB GDDR7, Blackwell architecture",
+          "useCase": "Primary training and inference hardware",
+          "whyUsed": "BF16 tensor cores, CUDA 12.4+, SM ≥8.0."
+        },
+        {
+          "name": "Google Drive for Desktop",
+          "config": "G: drive (Windows) or /mnt/google-drive (Linux)",
+          "useCase": "PadChest dataset storage (~1 TB) and adapter checkpoint backup",
+          "whyUsed": "1 TB dataset doesn't fit on local SSD. Drive streaming via FUSE mount."
+        },
+        {
+          "name": "FastAPI Server",
+          "config": "uvicorn src.api.routes:app --host 0.0.0.0 --port 8000",
+          "useCase": "REST API for production X-ray analysis",
+          "whyUsed": "NEW in v3. Async API with Pydantic validation, OpenAPI docs, health checks.",
+          "v2Status": "No API"
+        },
+        {
+          "name": "Gradio Demo",
+          "config": "gradio src/api/gradio_app.py --server-port 7860",
+          "useCase": "Interactive web demo for X-ray upload and analysis",
+          "whyUsed": "NEW in v3. User-friendly interface for stakeholder demos.",
+          "v2Status": "Notebook-only interface"
+        },
+        {
+          "name": "Docker",
+          "config": "docker-compose up [train|serve|tensorboard]",
+          "useCase": "Containerized training and serving environments",
+          "whyUsed": "NEW in v3. Reproducible environments across machines.",
+          "v2Status": "Local installation only"
+        },
+        {
+          "name": "CI/CD (GitHub Actions)",
+          "config": ".github/workflows/{ci,model-test,release}.yml",
+          "useCase": "Automated linting, testing, and release on push/PR",
+          "whyUsed": "NEW in v3. Code quality gates and automated adapter deployment to HF Hub.",
+          "v2Status": "No CI/CD"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Auxiliary Models & Ensemble Pipeline",
+      "icon": "🤝",
+      "color": "#0EA5E9",
+      "gradient": "from-sky-500 to-blue-600",
+      "description": "NEW SECTION. Supporting models that enhance specific pipeline stages without replacing MedGemma 1.5.",
+      "items": [
+        {
+          "name": "MedSAM (wanglab/medsam-vit-base)",
+          "role": "Medical Image Segmentation",
+          "params": "93M",
+          "vram": "<1 GB",
+          "integration": "MedGemma 1.5 bbox prompt → MedSAM → pixel-accurate mask",
+          "arxiv": "arXiv:2304.12306",
+          "whyUsed": "Pixel-accurate localization. State-of-the-art medical segmentation across 11 modalities."
+        },
+        {
+          "name": "BiomedCLIP (microsoft/BiomedCLIP-PubMedBERT_256)",
+          "role": "Medical Image Embedding & Quality Scoring",
+          "params": "200M",
+          "vram": "<1 GB",
+          "integration": "Pre-screening: reject blurry/rotated X-rays. RAG: embed for similar-case retrieval. Evaluation: embedding similarity metric.",
+          "arxiv": "arXiv:2303.00915",
+          "whyUsed": "497K downloads, PMC-15M pre-training. Excellent for CXR embedding space."
+        },
+        {
+          "name": "CheXbert (stanfordmlgroup/CheXbert)",
+          "role": "Automated CXR Report Label Extraction",
+          "params": "~110M",
+          "vram": "<1 GB",
+          "integration": "Generated report → CheXbert → 14 CheXpert labels → F1 vs ground truth",
+          "whyUsed": "Extract standardized labels from free-text reports for evaluation. Industry-standard metric."
+        },
+        {
+          "name": "RadGraph (radgraph package)",
+          "role": "Clinical Entity & Relation Extraction",
+          "params": "~340M",
+          "vram": "~1 GB",
+          "integration": "Generated report → RadGraph → entity-relation graph → F1 vs reference graph",
+          "arxiv": "arXiv:2106.14463",
+          "whyUsed": "Gold standard metric for radiology report quality. Captures clinical accuracy beyond lexical matching."
+        },
+        {
+          "name": "CheXagent-2-3b (StanfordAIMI/CheXagent-2-3b)",
+          "role": "Ensemble Partner for CXR Report Generation",
+          "params": "3B",
+          "vram": "~1.5 GB (4-bit)",
+          "integration": "Run both MedGemma 1.5 + CheXagent → merge findings via confidence voting",
+          "arxiv": "arXiv:2401.12208",
+          "whyUsed": "CXR-specific model trained on 28+ CXR datasets. MIT license. Complementary strengths."
+        },
+        {
+          "name": "TorchXRayVision (mlmed/torchxrayvision)",
+          "role": "Baseline CXR Classification & Preprocessing",
+          "params": "Various",
+          "vram": "<1 GB",
+          "integration": "Pre-trained DenseNet/ResNet CXR classifiers for baseline comparison. Image normalization utilities.",
+          "whyUsed": "Established CXR classification baselines for performance comparison."
+        }
+      ],
+      "totalAuxVRAM": "~4.5 GB (all models simultaneously at 4-bit/FP32)",
+      "coLoadingStrategy": "Load MedGemma 1.5 (~2.5 GB) + MedSAM (~1 GB) = 3.5 GB. Other models loaded on-demand for evaluation."
+    },
+    {
+      "id": 13,
+      "title": "Advanced Localization (MedGemma 1.5 + MedSAM)",
+      "icon": "📍",
+      "color": "#D946EF",
+      "gradient": "from-fuchsia-500 to-purple-600",
+      "description": "NEW SECTION. Three-tier localization: MedGemma 1.5 native bbox → MedSAM pixel masks → GradCAM heatmaps.",
+      "items": [
+        {
+          "name": "Tier 1: MedGemma 1.5 Native Bounding Boxes",
+          "pipeline": "input_image → MedGemma 1.5 → <box>y1 x1 y2 x2</box> + finding label",
+          "accuracy": "Chest ImaGenome IoU = 38.0 (zero-shot)",
+          "latency": "~0 ms additional (part of generation)",
+          "vram": "0 (part of base model)",
+          "whyUsed": "Built-in localization from MedGemma 1.5. No additional model needed. 12× improvement over v1."
+        },
+        {
+          "name": "Tier 2: MedSAM Pixel Segmentation",
+          "pipeline": "MedGemma bbox → rescale to image coords → MedSAM prompt → binary mask",
+          "accuracy": "Sub-pixel anatomical boundaries",
+          "latency": "~200 ms per region",
+          "vram": "~1 GB (ViT-B backbone)",
+          "whyUsed": "Converts rectangular bbox to precise anatomical contour. Clinically superior visualization."
+        },
+        {
+          "name": "Tier 3: GradCAM Attention Heatmaps",
+          "pipeline": "input_image → MedGemma vision encoder → GradCAM (last conv layer) → heatmap overlay",
+          "accuracy": "Qualitative (shows attention, not detection)",
+          "latency": "~100 ms per image",
+          "vram": "~0.5 GB (temporary gradients)",
+          "whyUsed": "Interpretability: shows which regions influenced the model's diagnosis. Useful for clinician trust."
+        },
+        {
+          "name": "Chest ImaGenome Scene Graph",
+          "pipeline": "MIMIC-CXR image → 29 anatomical regions → observation labels per region",
+          "accuracy": "Ground truth annotations (242K bounding boxes)",
+          "latency": "N/A (evaluation only)",
+          "vram": "N/A",
+          "whyUsed": "MedGemma 1.5 was evaluated on this dataset (IoU=38.0). Use as localization ground truth."
+        },
+        {
+          "name": "VinDr-CXR Radiologist Boxes",
+          "pipeline": "18K images with radiologist-drawn bounding boxes (3 annotators)",
+          "accuracy": "Radiologist-quality ground truth",
+          "latency": "N/A (evaluation only)",
+          "vram": "N/A",
+          "whyUsed": "Independent evaluation dataset with high-quality bounding box annotations. 28 finding types."
+        },
+        {
+          "name": "Composite Visualization",
+          "pipeline": "original_xray | bbox_overlay | medsam_mask | gradcam_heatmap → 4-panel figure",
+          "accuracy": "N/A (visualization)",
+          "latency": "~50 ms rendering",
+          "vram": "CPU only",
+          "whyUsed": "Show all three localization tiers side-by-side for comprehensive clinical communication."
+        }
+      ],
+      "v2Comparison": {
+        "v2": "26 predefined anatomical regions, text label → static coordinate lookup, colored rectangles",
+        "v3": "MedGemma 1.5 predicted bounding boxes + MedSAM pixel masks + GradCAM heatmaps + 4-panel visualization"
+      }
+    },
+    {
+      "id": 14,
+      "title": "API & Deployment Architecture",
+      "icon": "🌐",
+      "color": "#22C55E",
+      "gradient": "from-green-500 to-emerald-600",
+      "description": "NEW SECTION. Production-ready serving with FastAPI REST endpoint and Gradio interactive demo.",
+      "items": [
+        {
+          "name": "FastAPI REST Server",
+          "config": "uvicorn src.api.routes:app --host 0.0.0.0 --port 8000 --workers 1",
+          "endpoints": [
+            "POST /predict — Upload CXR image → structured report + localization",
+            "POST /batch — Upload multiple images → batch analysis",
+            "GET /health — Server health check + GPU memory status",
+            "GET /model-info — Model version, adapter info, supported findings"
+          ],
+          "whyUsed": "Async Python API with automatic OpenAPI documentation, Pydantic request/response validation."
+        },
+        {
+          "name": "Pydantic Schemas",
+          "config": "PredictionRequest(image: UploadFile), PredictionResponse(findings, locations, impression, bbox, confidence)",
+          "useCase": "Type-safe request/response validation",
+          "whyUsed": "Ensures API contract consistency and provides auto-generated documentation."
+        },
+        {
+          "name": "Gradio Web UI",
+          "config": "gradio_app(model, processor) → Image → Report + Visualization",
+          "features": [
+            "Drag-and-drop X-ray upload",
+            "Real-time analysis with progress bar",
+            "Side-by-side visualizations (original + annotated)",
+            "Downloadable PDF report"
+          ],
+          "whyUsed": "User-friendly demo for non-technical stakeholders. Many MedGemma Spaces use Gradio."
+        },
+        {
+          "name": "Docker Containerization",
+          "config": "Dockerfile.train (CUDA 12.4 base), Dockerfile.serve (lightweight inference)",
+          "useCase": "Reproducible training and serving environments",
+          "whyUsed": "Consistent deployment across different machines. GPU passthrough for NVIDIA runtime."
+        },
+        {
+          "name": "vLLM Inference (future)",
+          "config": "vllm serve google/medgemma-1.5-4b-it --quantization awq",
+          "useCase": "High-throughput inference serving with continuous batching",
+          "whyUsed": "TRL v0.27.0 integrates with vLLM 0.12. Enables 10-100× inference throughput.",
+          "status": "Planned (when vLLM adds MedGemma support)"
+        },
+        {
+          "name": "CORS Middleware",
+          "config": "CORSMiddleware(allow_origins=['*'], allow_methods=['POST', 'GET'])",
+          "useCase": "Cross-origin request support for web frontends",
+          "whyUsed": "Required for Gradio or separate frontend to call FastAPI backend."
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Monitoring & Experiment Tracking",
+      "icon": "📊",
+      "color": "#A855F7",
+      "gradient": "from-purple-500 to-violet-600",
+      "description": "NEW SECTION. Comprehensive experiment tracking and production monitoring.",
+      "items": [
+        {
+          "name": "Weights & Biases (W&B)",
+          "config": "wandb.init(project='explainmyxray-v3', entity='hameed0342j')",
+          "useCase": "Experiment tracking: log metrics, hyperparameters, model artifacts, training curves",
+          "features": [
+            "Automatic metric logging from TRL trainer",
+            "Hyperparameter sweep dashboards",
+            "Model registry for adapter versioning",
+            "Team collaboration and run comparison"
+          ],
+          "whyUsed": "Industry standard for ML experiment management. Free for academic/personal use."
+        },
+        {
+          "name": "TensorBoard (fallback)",
+          "config": "report_to='tensorboard', logging_dir='./logs'",
+          "useCase": "Local training visualization: loss curves, learning rate, gradient norms",
+          "whyUsed": "Already integrated in v2. Keep as local fallback when W&B is unavailable."
+        },
+        {
+          "name": "VRAM Monitor",
+          "config": "torch.cuda.memory_allocated() / torch.cuda.max_memory_allocated()",
+          "useCase": "Real-time GPU memory tracking during training and inference",
+          "whyUsed": "Prevent OOM crashes on 12 GB VRAM. Log to W&B for analysis."
+        },
+        {
+          "name": "Data Drift Detection",
+          "config": "Compare embedding distribution of new images vs training distribution",
+          "useCase": "Detect when incoming X-rays differ significantly from training data",
+          "whyUsed": "Alert when model may produce unreliable predictions on out-of-distribution images."
+        },
+        {
+          "name": "Performance Alerts",
+          "config": "alert(metric='accuracy', threshold=0.90, direction='below')",
+          "useCase": "Automated alerts when model performance drops below threshold",
+          "whyUsed": "Catch model degradation early in production."
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Research-Backed Improvements Log",
+      "icon": "🔬",
+      "color": "#F43F5E",
+      "gradient": "from-rose-500 to-pink-600",
+      "description": "NEW SECTION. Specific research-backed improvements from the v2→v3 deep research phase.",
+      "items": [
+        {
+          "name": "forward_masked_logits (TRL v0.27.0)",
+          "improvement": "50% VRAM reduction during forward pass",
+          "source": "TRL v0.27.0 changelog, Jan 10, 2026",
+          "implementation": "Add forward_masked_logits=True to SFTConfig",
+          "impact": "Frees ~0.4 GB → enables batch_size=2 or LoRA r=64",
+          "status": "Quick Win"
+        },
+        {
+          "name": "DoRA: Weight-Decomposed LoRA (arXiv:2402.09353)",
+          "improvement": "1-3% accuracy improvement over standard LoRA",
+          "source": "Liu et al., 2024, ICML. Confirmed in PEFT v0.18.0 release.",
+          "implementation": "Add use_dora=True to LoraConfig. Drop-in replacement.",
+          "impact": "Better convergence, especially for domain adaptation tasks",
+          "status": "Quick Win"
+        },
+        {
+          "name": "MedGemma 1.5 Native Bounding Boxes",
+          "improvement": "12× localization improvement (IoU 3.1→38.0)",
+          "source": "google/medgemma-1.5-4b-it model card, Jan 13, 2026",
+          "implementation": "Swap model_id, parse <box> tokens from output",
+          "impact": "Replaces entire manual 26-region coordinate system",
+          "status": "Quick Win"
+        },
+        {
+          "name": "RadGraph F1 Evaluation Metric (arXiv:2106.14463)",
+          "improvement": "Industry-standard report quality assessment",
+          "source": "Jain et al., 2021, NeurIPS Datasets. Used by MedGemma, CheXagent.",
+          "implementation": "Install radgraph package, add to evaluation pipeline",
+          "impact": "Credible evaluation metric beyond soft-match accuracy",
+          "status": "Medium Term"
+        },
+        {
+          "name": "MedSAM Pixel Localization (arXiv:2304.12306)",
+          "improvement": "Pixel-accurate anatomical segmentation from bbox prompts",
+          "source": "Ma et al., 2024, Nature Communications",
+          "implementation": "Load MedSAM (<1 GB), feed MedGemma bbox as prompt → get mask",
+          "impact": "Clinically meaningful localization visualization",
+          "status": "Medium Term"
+        },
+        {
+          "name": "ensure_weight_tying (PEFT v0.18.0)",
+          "improvement": "Proper synchronization of lm_head and embed_tokens",
+          "source": "PEFT v0.18.0 changelog, Nov 13, 2025",
+          "implementation": "Add ensure_weight_tying=True to get_peft_model() call",
+          "impact": "Prevents embedding divergence when both are in modules_to_save",
+          "status": "Quick Win"
+        },
+        {
+          "name": "CheXagent-2 Ensemble (arXiv:2401.12208)",
+          "improvement": "2-5% accuracy on complex multi-finding cases",
+          "source": "Chen et al., 2024. MIT license, 3B params, CXR-specific.",
+          "implementation": "Load both models (total ~4 GB), merge findings with confidence voting",
+          "impact": "Complementary CXR expertise, cross-validation of findings",
+          "status": "Long Term"
+        },
+        {
+          "name": "DeLoRA: Decoupled LoRA (arXiv:2503.18225)",
+          "improvement": "Similar to DoRA but with constrained norm deviation",
+          "source": "Bini et al., 2025. Available in PEFT v0.18.0.",
+          "implementation": "Alternative to DoRA if DoRA diverges during training",
+          "impact": "More stable convergence than DoRA on some tasks",
+          "status": "Research Watchlist"
+        }
+      ]
+    }
+  ],
+  "architectureDiagram": {
+    "title": "ExplainMyXray v3 — Data Flow",
+    "stages": [
+      {
+        "name": "Input",
+        "icon": "📥",
+        "components": ["CXR Image (PNG/DICOM)", "PadChest CSV Labels", "Patient Metadata"]
+      },
+      {
+        "name": "Preprocessing",
+        "icon": "⚙️",
+        "components": ["BiomedCLIP Quality Check", "Image Resize (896×896)", "Chat Template Formatting", "Difficulty Scoring", "Curriculum Sorting"]
+      },
+      {
+        "name": "Model",
+        "icon": "🧠",
+        "components": ["Medical SigLIP Vision Encoder (896²)", "MedGemma 1.5 4B-it (NF4 Quantized)", "DoRA Adapters (r=32, α=64)", "forward_masked_logits"]
+      },
+      {
+        "name": "Training",
+        "icon": "🏋️",
+        "components": ["TRL SFTTrainer", "paged_adamw_8bit", "Cosine LR + Warmup", "Gradient Checkpointing", "BF16 Mixed Precision", "Early Stopping (patience=5)", "W&B Experiment Tracking"]
+      },
+      {
+        "name": "Output",
+        "icon": "📋",
+        "components": ["FINDINGS: multi-label list", "LOCATIONS: anatomical regions", "IMPRESSION: clinical summary", "BOUNDING BOXES: <box>y1 x1 y2 x2</box>"]
+      },
+      {
+        "name": "Localization",
+        "icon": "📍",
+        "components": ["MedGemma 1.5 Native BBox (IoU=38.0)", "MedSAM Pixel Masks (<1 GB)", "GradCAM Attention Heatmaps", "4-Panel Composite Visualization"]
+      },
+      {
+        "name": "Evaluation",
+        "icon": "📈",
+        "components": ["Soft Match Accuracy (≥95%)", "RadGraph F1 (≥0.40)", "CheXbert F1 (≥0.50)", "Per-Finding P/R/F1 (174 findings)", "Localization IoU (≥0.30)"]
+      },
+      {
+        "name": "Serving",
+        "icon": "🌐",
+        "components": ["FastAPI REST API", "Gradio Web Demo", "Docker Containers", "Health Monitoring"]
+      }
+    ]
+  },
+  "quickReference": {
+    "model": "google/medgemma-1.5-4b-it (v1.5.0, Jan 2026)",
+    "visionEncoder": "Medical SigLIP 896×896 (CXR/derm/ophth/histo/CT/MRI pre-trained)",
+    "decoder": "Gemma 3 4B-it (128K context, GQA, BF16)",
+    "quantization": "NF4 4-bit + double quant (BitsAndBytes ≥0.45.0)",
+    "fineTuning": "DoRA r=32, α=64, all-linear, ensure_weight_tying=True",
+    "trainer": "TRL SFTTrainer with forward_masked_logits=True",
+    "computeDtype": "BF16 (RTX 5080 tensor cores)",
+    "effectiveBatch": "1 × 32 gradient_accumulation = 32",
+    "learningRate": "1e-4, cosine with 5% warmup",
+    "epochs": "5 (early stopping patience=5)",
+    "dataset": "BIMCV PadChest — 160K+ CXR images, 174 findings, 104 locations",
+    "dataSplit": "90% train / 5% val / 5% test (stratified)",
+    "localization": "MedGemma 1.5 native bbox (IoU=38.0) + MedSAM pixel masks + GradCAM",
+    "evaluation": "Soft match ≥95% + RadGraph F1 ≥0.40 + CheXbert F1 ≥0.50 + per-finding P/R/F1",
+    "targetAccuracy": "Soft match ≥95%, RadGraph F1 ≥0.40",
+    "trainableParams": "~100M (<2.5% of 4B) via DoRA",
+    "gpu": "NVIDIA RTX 5080, 12 GB GDDR7, Blackwell",
+    "environment": "VS Code + local RTX 5080 training",
+    "serving": "FastAPI + Gradio + Docker",
+    "experimentTracking": "Weights & Biases + TensorBoard"
+  },
+  "colorPalette": {
+    "libraries": "#4F46E5",
+    "model": "#7C3AED",
+    "quantization": "#06B6D4",
+    "lora": "#8B5CF6",
+    "dataset": "#10B981",
+    "pipeline": "#F59E0B",
+    "training": "#EF4444",
+    "evaluation": "#14B8A6",
+    "localization": "#F97316",
+    "callbacks": "#EC4899",
+    "deployment": "#6366F1",
+    "auxiliary": "#0EA5E9",
+    "advancedLocalization": "#D946EF",
+    "api": "#22C55E",
+    "monitoring": "#A855F7",
+    "research": "#F43F5E"
+  },
+  "v2vsV3": [
+    {
+      "aspect": "Model",
+      "v2": "MedGemma 4B-it v1.0.1",
+      "v3": "MedGemma 1.5 4B-it v1.5.0",
+      "icon": "🧠"
+    },
+    {
+      "aspect": "Vision Encoder",
+      "v2": "Medical SigLIP 896² (CXR/derm/ophth/histo)",
+      "v3": "Medical SigLIP 896² (+ CT, MRI, WSI, EHR)",
+      "icon": "👁️"
+    },
+    {
+      "aspect": "PEFT Method",
+      "v2": "LoRA (r=32, α=64)",
+      "v3": "DoRA (r=32, α=64, use_dora=True)",
+      "icon": "🔧"
+    },
+    {
+      "aspect": "Localization",
+      "v2": "26 manual text→bbox regions, colored rectangles",
+      "v3": "MedGemma 1.5 native bbox (IoU=38.0) + MedSAM pixel masks + GradCAM",
+      "icon": "📍"
+    },
+    {
+      "aspect": "Evaluation",
+      "v2": "Soft match accuracy, per-finding P/R/F1",
+      "v3": "Soft match + RadGraph F1 + CheXbert F1 + Localization IoU",
+      "icon": "📈"
+    },
+    {
+      "aspect": "VRAM Optimization",
+      "v2": "NF4 + gradient checkpointing + paged optimizer",
+      "v3": "+ forward_masked_logits (50% forward pass reduction)",
+      "icon": "💾"
+    },
+    {
+      "aspect": "Frameworks",
+      "v2": "Transformers ≥4.52, TRL ≥0.17, PEFT ≥0.15",
+      "v3": "Transformers ≥5.1.0, TRL ≥0.27.2, PEFT ≥0.18.1",
+      "icon": "📚"
+    },
+    {
+      "aspect": "API / Serving",
+      "v2": "None (notebook only)",
+      "v3": "FastAPI + Gradio + Docker + CI/CD",
+      "icon": "🌐"
+    },
+    {
+      "aspect": "Experiment Tracking",
+      "v2": "TensorBoard only",
+      "v3": "Weights & Biases + TensorBoard",
+      "icon": "📊"
+    },
+    {
+      "aspect": "Testing",
+      "v2": "None",
+      "v3": "pytest suite + CI/CD + pre-commit hooks",
+      "icon": "🧪"
+    },
+    {
+      "aspect": "Localization Accuracy",
+      "v2": "No IoU metric (text-based only)",
+      "v3": "IoU=38.0 (MedGemma 1.5 zero-shot on Chest ImaGenome)",
+      "icon": "🎯"
+    },
+    {
+      "aspect": "CXR Report Accuracy",
+      "v2": "MIMIC CXR F1=88.9 (base model)",
+      "v3": "MIMIC CXR F1=89.5 (MedGemma 1.5 base model)",
+      "icon": "🏆"
+    },
+    {
+      "aspect": "Auxiliary Models",
+      "v2": "None",
+      "v3": "MedSAM + BiomedCLIP + CheXbert + RadGraph + CheXagent",
+      "icon": "🤝"
+    }
+  ]
+}
