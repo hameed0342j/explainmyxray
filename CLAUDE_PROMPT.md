@@ -20,8 +20,9 @@ ExplainMyXray v2 fine-tunes **MedGemma-4B-it** (Google's medical vision-language
 - **OS**: Windows 11
 - **GPU**: NVIDIA RTX 4080 Laptop (12 GB VRAM)
 - **IDE**: VS Code with Python + Jupyter extensions
-- **Dataset**: BIMCV PadChest (~160K images) stored in Google Drive, accessed via Google Drive for Desktop
+- **Dataset**: BIMCV PadChest (~160K images, ~1TB) stored in Google Drive, **streamed via Google Drive for Desktop** — NOT downloaded locally
 - **Python**: 3.11 in a virtual environment (venv)
+- **Storage**: Limited local disk — dataset streams from Google Drive on-demand
 
 ### What I Need You To Do
 
@@ -31,12 +32,15 @@ ExplainMyXray v2 fine-tunes **MedGemma-4B-it** (Google's medical vision-language
 
 3. **Help me configure the notebook** — the main file is `notebooks/ExplainMyXray_v2.ipynb`. I need to:
    - Select the correct Jupyter kernel ("ExplainMyXray v2" or the venv Python)
-   - Update dataset paths in **Cell 5** to point to my Google Drive:
+   - **Cell 1 auto-detects Google Drive for Desktop** — just run it and it finds the dataset
+   - If auto-detection fails, update dataset paths manually in **Cell 5**:
      ```python
      cfg.gdrive_padchest_csv = "G:/My Drive/Padchest/PADCHEST_chest_x_ray_images_labels_160K.csv"
      cfg.gdrive_padchest_images = "G:/My Drive/Padchest/images"
      ```
    - My Google Drive letter might be different (check "This PC" in File Explorer)
+   - **Google Drive for Desktop streams files on-demand** — no need to download the ~1TB dataset locally
+   - If Drive streaming is too slow, consider downloading only the CSV locally (~200 MB)
 
 4. **Help me run the notebook cell by cell** — if any cell throws an error, debug it. Common issues:
    - `bitsandbytes` errors on Windows → `pip install bitsandbytes --prefer-binary`
@@ -44,6 +48,9 @@ ExplainMyXray v2 fine-tunes **MedGemma-4B-it** (Google's medical vision-language
    - HuggingFace access denied → need to accept license at https://huggingface.co/google/medgemma-4b-it and run `huggingface-cli login`
    - Out of memory → close other apps, or reduce `max_seq_length` to 256 in Cell 5
    - Module not found → activate venv first: `venv\Scripts\activate.bat`
+   - **Google Drive path not found** → make sure Google Drive for Desktop is running and signed in. Check drive letter in "This PC"
+   - **Dataset loading slow on first epoch** → this is normal with Drive streaming. Files get cached locally after first access, subsequent epochs are faster
+   - **Drive disconnects during training** → check internet connection, re-sign in to Drive for Desktop. Training auto-retries on file read errors
 
 5. **After training completes (~8-12 hours)**, help me run the evaluation cells and use `predict_xray()` for inference.
 
@@ -83,6 +90,43 @@ ExplainMyXray v2 fine-tunes **MedGemma-4B-it** (Google's medical vision-language
 6. **Read error messages carefully** — PyTorch and transformers errors are usually descriptive. Search the error on GitHub Issues if stuck.
 7. **Don't modify the model architecture code** unless you know what you're doing. The LoRA config, quantization, and trainer setup are carefully tuned for 12 GB VRAM.
 8. **If training loss is not decreasing**, the learning rate might be wrong or the data paths are incorrect (model is training on empty/broken images).
+
+### Google Drive for Desktop — Dataset Streaming Setup
+
+The PadChest dataset (~1TB) is stored in Google Drive and accessed via **Google Drive for Desktop**, which streams files on-demand without downloading locally. This is the recommended approach — it requires **zero local storage** for the dataset.
+
+#### How It Works
+- Google Drive for Desktop creates a virtual drive on your system (e.g., `G:` on Windows)
+- Files appear as if they're local but are fetched from the cloud on-demand
+- After first access, files are cached locally for faster subsequent reads
+- The notebook (Cell 1) **auto-detects** the Google Drive mount point and sets paths automatically
+
+#### Setup Steps
+1. **Install Google Drive for Desktop**: https://www.google.com/drive/download/
+2. **Sign in** with the Google account that has the PadChest dataset in `My Drive/Padchest/`
+3. **Verify**: Open File Explorer → "This PC" → you should see a Google Drive entry (usually `G:`)
+4. **Navigate** to: `G:\My Drive\Padchest\` — you should see the CSV file and `images/` folder
+5. **Run the notebook** — Cell 1 auto-detects the Drive and sets paths. No manual config needed.
+
+#### If Auto-Detection Fails
+- Check what drive letter Google Drive uses: open "This PC" in File Explorer
+- Set paths manually in Cell 5 of the notebook:
+  ```python
+  cfg.gdrive_padchest_csv = "H:/My Drive/Padchest/PADCHEST_chest_x_ray_images_labels_160K.csv"  # change H: to your letter
+  cfg.gdrive_padchest_images = "H:/My Drive/Padchest/images"
+  ```
+
+#### Performance Notes
+- **First epoch** may be slower (~2-3x) as images stream from Google Drive
+- **Subsequent epochs** are faster because Google Drive for Desktop caches accessed files
+- **Internet speed matters**: a stable 50+ Mbps connection is recommended
+- If training is extremely slow, consider downloading just the CSV locally (~200 MB) and streaming only images
+
+#### Fallback: Local Download (Last Resort)
+If Google Drive for Desktop is not an option, download a subset of PadChest locally:
+- Keep total local dataset under **300 GB** (download folders 0-15 only, ~half the dataset)
+- Set paths in Cell 5 to the local folder
+- This gives fewer training images but avoids the full ~1TB download
 
 ### Environment Variables
 

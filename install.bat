@@ -90,6 +90,35 @@ echo   Verifying installation...
 echo ============================================
 python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}'); print(f'GPU: {torch.cuda.get_device_name(0)}' if torch.cuda.is_available() else 'No GPU'); import transformers; print(f'Transformers: {transformers.__version__}'); import peft; print(f'PEFT: {peft.__version__}'); import trl; print(f'TRL: {trl.__version__}'); print('All dependencies verified!')"
 
+REM ---- Check Google Drive for Desktop ----
+echo.
+echo ============================================
+echo   Checking Google Drive for Desktop...
+echo ============================================
+set GDRIVE_FOUND=0
+for %%d in (G H I J K L M N O P Q R S T U V W X Y Z) do (
+    if exist "%%d:\My Drive\Padchest\PADCHEST_chest_x_ray_images_labels_160K.csv" (
+        echo   FOUND: PadChest dataset at %%d:\My Drive\Padchest\
+        echo   The notebook will auto-detect this path. No manual setup needed!
+        set GDRIVE_FOUND=1
+        goto :gdrive_done
+    )
+)
+:gdrive_done
+if %GDRIVE_FOUND%==0 (
+    echo   Google Drive for Desktop not detected or PadChest not found.
+    echo.
+    echo   RECOMMENDED: Install Google Drive for Desktop to stream the dataset
+    echo   without downloading ~1TB locally:
+    echo     1. Download: https://www.google.com/drive/download/
+    echo     2. Sign in with the Google account that has PadChest
+    echo     3. PadChest will appear at G:\My Drive\Padchest\
+    echo     4. The notebook auto-detects it — no manual path config needed
+    echo.
+    echo   ALTERNATIVE: Download dataset locally (needs ~300 GB)
+    echo     Set paths manually in Cell 5 of the notebook.
+)
+
 echo.
 echo ============================================
 echo   Setup complete!
@@ -101,11 +130,14 @@ echo   2. Open notebook:  jupyter notebook notebooks\ExplainMyXray_v2.ipynb
 echo   3. Select kernel:  'ExplainMyXray v2'
 echo   4. Run all cells sequentially
 echo.
-echo For PadChest dataset via Google Drive for Desktop:
-echo   - Install Google Drive for Desktop
-echo   - Dataset will appear at G:\My Drive\Padchest\
-echo   - Update Config paths in Cell 5 of the notebook:
-echo     gdrive_padchest_csv = "G:/My Drive/Padchest/PADCHEST_chest_x_ray_images_labels_160K.csv"
-echo     gdrive_padchest_images = "G:/My Drive/Padchest/images"
+echo Dataset access (recommended: Google Drive for Desktop):
+echo   - Install Google Drive for Desktop: https://www.google.com/drive/download/
+echo   - Sign in with the account that has PadChest in My Drive
+echo   - The notebook auto-detects Drive paths — no manual config needed!
+echo   - Streams ~1TB dataset on-demand (zero local download)
+echo.
+echo Fallback (local download, last resort):
+echo   - Download PadChest to local disk (keep under 300 GB)
+echo   - Update paths manually in Cell 5 of the notebook
 echo.
 pause

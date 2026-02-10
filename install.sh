@@ -121,6 +121,59 @@ print('✅ All dependencies verified!')
 
 echo ""
 echo "============================================"
+echo "  Checking for PadChest dataset..."
+echo "============================================"
+
+GDRIVE_FOUND=0
+
+# Check Google Colab mount
+if [ -d "/content/drive/MyDrive/Padchest" ]; then
+    echo "  FOUND: PadChest dataset at /content/drive/MyDrive/Padchest/"
+    GDRIVE_FOUND=1
+fi
+
+# Check macOS Google Drive for Desktop (CloudStorage)
+if [ "$GDRIVE_FOUND" -eq 0 ] && [ -d "$HOME/Library/CloudStorage" ]; then
+    for gdrive_dir in "$HOME/Library/CloudStorage"/GoogleDrive-*/; do
+        if [ -d "${gdrive_dir}My Drive/Padchest" ]; then
+            echo "  FOUND: PadChest dataset at ${gdrive_dir}My Drive/Padchest/"
+            GDRIVE_FOUND=1
+            break
+        fi
+    done
+fi
+
+# Check common Linux paths
+if [ "$GDRIVE_FOUND" -eq 0 ]; then
+    for candidate in \
+        "$HOME/Google Drive/My Drive/Padchest" \
+        "$HOME/google-drive/My Drive/Padchest" \
+        "$HOME/gdrive/My Drive/Padchest" \
+        "/mnt/google-drive/My Drive/Padchest" \
+        "/mnt/gdrive/My Drive/Padchest"; do
+        if [ -d "$candidate" ]; then
+            echo "  FOUND: PadChest dataset at $candidate"
+            GDRIVE_FOUND=1
+            break
+        fi
+    done
+fi
+
+if [ "$GDRIVE_FOUND" -eq 0 ]; then
+    echo "  PadChest dataset not auto-detected."
+    echo ""
+    echo "  RECOMMENDED: Install Google Drive for Desktop to stream the dataset"
+    echo "  without downloading ~1TB locally:"
+    echo "    → https://www.google.com/drive/download/"
+    echo "    Sign in with the Google account that has PadChest"
+    echo "    The notebook auto-detects Drive paths — no manual config needed!"
+    echo ""
+    echo "  ALTERNATIVE: Download PadChest locally (keep under 300 GB)"
+    echo "    Set paths manually in Cell 5 of the notebook."
+fi
+
+echo ""
+echo "============================================"
 echo "  Setup complete!"
 echo "============================================"
 echo ""
@@ -130,7 +183,13 @@ echo "  2. Open the notebook:  jupyter notebook notebooks/ExplainMyXray_v2.ipynb
 echo "  3. Select kernel:      'ExplainMyXray v2'"
 echo "  4. Run all cells sequentially"
 echo ""
-echo "For Google Drive PadChest dataset:"
-echo "  - Mount Drive or download to local disk"
-echo "  - Update Config paths in Cell 5 of the notebook"
+echo "Dataset access (recommended: Google Drive for Desktop):"
+echo "  - Install: https://www.google.com/drive/download/"
+echo "  - Sign in with the account that has PadChest in My Drive"
+echo "  - The notebook auto-detects Drive paths — no manual config needed!"
+echo "  - Streams ~1TB dataset on-demand (zero local download)"
+echo ""
+echo "Fallback (local download, last resort):"
+echo "  - Download PadChest to local disk (keep under 300 GB)"
+echo "  - Update paths manually in Cell 5 of the notebook"
 echo ""

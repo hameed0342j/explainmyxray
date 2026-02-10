@@ -139,12 +139,22 @@ You need these 4 things installed before starting. If you already have them, ski
    - **Python** (by Microsoft)
    - **Jupyter** (by Microsoft)
 
-#### 0e. Install Google Drive for Desktop (for the dataset)
+#### 0e. Install Google Drive for Desktop (Recommended — Stream Dataset Without Downloading)
+
+The PadChest dataset is ~1TB. Instead of downloading it locally, **Google Drive for Desktop** streams files on-demand — zero local storage needed for the dataset.
 
 1. Go to https://www.google.com/drive/download/
 2. Install and sign in with the Google account that has the PadChest dataset
-3. After install, your Google Drive files appear at **`G:\My Drive\`**
-4. Verify the dataset folder exists at: `G:\My Drive\Padchest\`
+3. After install, your Google Drive files appear as a virtual drive (usually **`G:\My Drive\`**)
+4. Open File Explorer → "This PC" — note which drive letter Google Drive uses
+5. Verify the dataset folder exists at: `G:\My Drive\Padchest\`
+6. **That's it!** The notebook auto-detects Google Drive for Desktop and sets paths automatically
+
+> **Why this is better than downloading locally:**
+> - No need to download ~1TB of images — they stream on-demand
+> - Files get cached locally after first access, so subsequent epochs are faster
+> - Zero local disk space used for the dataset
+> - Always synced with the latest data in Google Drive
 
 #### 0f. Get a HuggingFace Account + Accept MedGemma License
 
@@ -205,12 +215,19 @@ This takes **10-20 minutes** depending on internet speed. Wait for it to say `Se
 
 ### Step 4: Configure Dataset Paths (Cell 5)
 
-Before running anything, update the dataset paths in **Cell 5** of the notebook.
+**If you installed Google Drive for Desktop (Step 0e):** just run Cell 1 and Cell 5 — paths are **auto-detected**. No manual configuration needed!
 
-Find these lines and change them to your Google Drive paths:
+The notebook scans your system for Google Drive for Desktop and finds the PadChest dataset automatically. You'll see a confirmation message like:
+```
+✅ Google Drive for Desktop detected!
+   PadChest dataset: G:/My Drive/Padchest
+   (Files stream on-demand — no local download needed)
+```
+
+**If auto-detection fails**, find these lines in Cell 5 and set them manually:
 
 ```python
-# Change these two lines:
+# Change these two lines (check your drive letter in "This PC"):
 cfg.gdrive_padchest_csv = "G:/My Drive/Padchest/PADCHEST_chest_x_ray_images_labels_160K.csv"
 cfg.gdrive_padchest_images = "G:/My Drive/Padchest/images"
 ```
@@ -218,6 +235,9 @@ cfg.gdrive_padchest_images = "G:/My Drive/Padchest/images"
 > **Note:** Use forward slashes `/` not backslashes `\` in the paths, even on Windows.
 >
 > If your Google Drive letter is different (e.g., `H:` instead of `G:`), check in File Explorer what drive letter Google Drive uses. You can also look at `This PC` to find "Google Drive".
+
+**Fallback — Local download (last resort, max 300 GB):**
+If Google Drive for Desktop is not an option, download a subset of PadChest locally and set the paths accordingly. Keep total local dataset under **300 GB**.
 
 Also make sure this is set:
 ```python
@@ -328,7 +348,7 @@ If CUDA shows `False`, your CUDA toolkit isn't installed correctly. Reinstall fr
 
 ## Dataset Setup — BIMCV PadChest
 
-The full PadChest dataset contains **160K+ chest X-ray images** organized in 38 numbered sub-folders.
+The full PadChest dataset contains **160K+ chest X-ray images** (~1TB) organized in 38 numbered sub-folders.
 
 ### Folder Structure
 
@@ -343,15 +363,26 @@ Padchest/
     └── 37/   ← 38 folders total
 ```
 
-### Where to Put the Dataset
+### Recommended: Google Drive for Desktop (Zero Local Download)
+
+The notebook **auto-detects Google Drive for Desktop** on Windows, macOS, and Linux. Just install it, sign in, and run the notebook — it finds PadChest automatically.
+
+| Setup | How It Works | Local Storage Needed |
+|-------|-------------|---------------------|
+| **Google Drive for Desktop** (recommended) | Streams files on-demand from Google Drive | ~0 GB for dataset |
+| **Google Colab** | Mounts Drive via `/content/drive/` | 0 GB (cloud VM) |
+| **Local download** (last resort) | Download subset to local disk | Up to 300 GB max |
+
+### Where Paths Are Set
 
 | Setup | CSV Path | Images Path |
 |-------|----------|-------------|
-| **Windows (Drive for Desktop)** | `G:/My Drive/Padchest/PADCHEST_chest_x_ray_images_labels_160K.csv` | `G:/My Drive/Padchest/images` |
-| **Google Colab** (default) | `/content/drive/MyDrive/Padchest/PADCHEST_chest_x_ray_images_labels_160K.csv` | `/content/drive/MyDrive/Padchest/images` |
-| **Local download** | Your local path to the CSV | Your local path to the `images/` folder |
+| **Windows (Drive for Desktop)** — auto-detected | `G:/My Drive/Padchest/PADCHEST_...csv` | `G:/My Drive/Padchest/images` |
+| **macOS (Drive for Desktop)** — auto-detected | `~/Library/CloudStorage/GoogleDrive-.../My Drive/Padchest/...csv` | `.../Padchest/images` |
+| **Google Colab** — auto-detected | `/content/drive/MyDrive/Padchest/...csv` | `.../Padchest/images` |
+| **Local download** — manual | Your local path to the CSV | Your local path to `images/` |
 
-Update these in **Cell 5** → `cfg.gdrive_padchest_csv` and `cfg.gdrive_padchest_images`.
+The notebook auto-detects all of the above except local download. Update paths in **Cell 5** only if auto-detection fails.
 
 ---
 
@@ -413,8 +444,10 @@ Try these changes in Cell 5 (one at a time, retrain each time):
 | `ModuleNotFoundError` | Make sure you activated the venv: `venv\Scripts\activate.bat` |
 | Notebook kernel not found | In VS Code, click "Select Kernel" → "Python Environments" → pick `.\venv\Scripts\python.exe` |
 | HuggingFace access denied | Accept MedGemma license at https://huggingface.co/google/medgemma-4b-it then re-run `huggingface-cli login` |
-| Google Drive path not found | Check your Drive letter in File Explorer under "This PC". It might be `H:\` instead of `G:\` |
+| Google Drive path not found | Make sure Google Drive for Desktop is installed and signed in. Check drive letter in "This PC". The notebook auto-detects it — if it fails, set paths manually in Cell 5 |
 | Training seems stuck / no progress | It's not stuck — first epoch on 160K images takes ~2 hours. Check the progress bar percentage |
+| First epoch very slow with Drive | Normal for Google Drive for Desktop streaming. Files cache locally after first access — subsequent epochs are faster |
+| Drive disconnects during training | Check internet connection. Re-sign in to Google Drive for Desktop. Training should auto-recover |
 | VS Code says "Jupyter not installed" | Open terminal in VS Code (Ctrl+`) → run `venv\Scripts\activate.bat` then `pip install jupyter ipykernel` |
 
 ### How to Activate the Virtual Environment (Every Time)
