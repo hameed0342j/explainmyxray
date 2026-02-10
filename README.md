@@ -89,9 +89,9 @@ Then paste your token when prompted. You won't need a `.env` file at all.
 
 ---
 
-## Windows RTX 5080 Laptop — Complete Setup Guide (Step by Step)
+## Windows RTX 4080 Laptop — Complete Setup Guide (Step by Step)
 
-> **This section is written for you if you have a Windows laptop with an NVIDIA RTX 5080 GPU.**
+> **This section is written for you if you have a Windows laptop with an NVIDIA RTX 4080 Laptop GPU.**
 > Follow every step in order. Copy-paste the commands exactly.
 
 ### Step 0: Install Prerequisites (One-Time)
@@ -129,7 +129,7 @@ You need these 4 things installed before starting. If you already have them, ski
    ```cmd
    nvidia-smi
    ```
-   You should see your RTX 5080 with ~12 GB listed
+   You should see your RTX 4080 Laptop with ~12 GB listed
 
 #### 0d. Install VS Code
 
@@ -318,7 +318,7 @@ python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); 
 Expected output:
 ```
 CUDA available: True
-GPU: NVIDIA GeForce RTX 5080
+GPU: NVIDIA GeForce RTX 4080 Laptop
 VRAM: 12.0 GB
 ```
 
@@ -436,7 +436,7 @@ In **VS Code**, the notebook automatically uses the right environment if you sel
 
 | Environment | GPU | VRAM | Training Time |
 |-------------|-----|------|---------------|
-| **Windows RTX 5080 (local)** | RTX 5080 | 12 GB | ~8-12 hours |
+| **Windows RTX 4080 Laptop (local)** | RTX 4080 Laptop | 12 GB | ~8-12 hours |
 | Google Colab (free) | T4 | 16 GB | ~10-14 hours |
 | Google Colab Pro | A100 | 40 GB | ~3-5 hours |
 

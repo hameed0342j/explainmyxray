@@ -18,7 +18,7 @@ ExplainMyXray v2 fine-tunes **MedGemma-4B-it** (Google's medical vision-language
 ### My Setup
 
 - **OS**: Windows 11
-- **GPU**: NVIDIA RTX 5080 (12 GB VRAM)
+- **GPU**: NVIDIA RTX 4080 Laptop (12 GB VRAM)
 - **IDE**: VS Code with Python + Jupyter extensions
 - **Dataset**: BIMCV PadChest (~160K images) stored in Google Drive, accessed via Google Drive for Desktop
 - **Python**: 3.11 in a virtual environment (venv)
@@ -55,7 +55,7 @@ ExplainMyXray v2 fine-tunes **MedGemma-4B-it** (Google's medical vision-language
 - **Trainer**: TRL `SFTTrainer` with `SFTConfig` — NOT vanilla HuggingFace Trainer. This handles chat template tokenization automatically
 - **Data format**: Each training example is a chat conversation: System message → User message (with image) → Assistant response (structured report)
 - **Chat template**: `processor.apply_chat_template(messages, tokenize=False)` — do NOT manually format tokens
-- **Precision**: BFloat16 (requires GPU compute capability ≥ 8.0, which RTX 5080 has)
+- **Precision**: BFloat16 (requires GPU compute capability ≥ 8.0, which RTX 4080 Laptop has)
 - **Gradient checkpointing**: Enabled to fit in 12 GB VRAM
 - **Effective batch size**: 1 × 32 gradient accumulation = 32
 - **Early stopping**: Patience=5, monitors eval_loss
@@ -76,7 +76,7 @@ ExplainMyXray v2 fine-tunes **MedGemma-4B-it** (Google's medical vision-language
 ### Debugging Rules
 
 1. **Always activate venv first** before running any Python command: `venv\Scripts\activate.bat`
-2. **Check GPU**: Run `python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"` — must show `True` and `RTX 5080`
+2. **Check GPU**: Run `python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"` — must show `True` and `RTX 4080 Laptop`
 3. **Check imports**: If `ModuleNotFoundError`, install the missing package in the venv: `pip install <package>`
 4. **Check VRAM**: If OOM error, run `nvidia-smi` to see what's using GPU memory. Close other apps. Kill zombie Python processes: `taskkill /f /im python.exe`
 5. **Check paths**: Windows paths use forward slashes in Python: `"G:/My Drive/..."` not `"G:\My Drive\..."`
@@ -93,7 +93,7 @@ The project uses `HF_TOKEN` for HuggingFace authentication. Set it up:
 
 ### Expected Training Behavior
 
-- First epoch takes ~2 hours on RTX 5080 with 160K images
+- First epoch takes ~2 hours on RTX 4080 Laptop with 160K images
 - Loss should start around 2-4 and decrease to <0.5 by epoch 3
 - You'll see a progress bar with step count, loss, and learning rate
 - Early stopping may trigger before all 5 epochs if loss plateaus

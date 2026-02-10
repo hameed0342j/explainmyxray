@@ -4,7 +4,7 @@ REM ExplainMyXray v2 — Installation Script (Windows)
 REM =============================================================
 REM Requirements:
 REM   - Python 3.10+ (3.11 recommended)
-REM   - NVIDIA GPU with >=12 GB VRAM (RTX 3090/4080/5080+)
+REM   - NVIDIA GPU with >=12 GB VRAM (RTX 3090/4080 Laptop/4080+)
 REM   - CUDA 12.1+ installed
 REM   - ~10 GB disk for model + dependencies
 REM =============================================================

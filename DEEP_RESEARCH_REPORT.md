@@ -2,7 +2,7 @@
 
 > **Generated:** February 10, 2026 | **Model:** Claude Opus 4.6 | **Scope:** Medical VLM Research  
 > **Attachments studied:** `architecture_prompt.json` (875 lines), `CLAUDE_PROMPT.md`, `README.md`  
-> **Constraint:** All recommendations must work on RTX 5080 (12 GB VRAM)
+> **Constraint:** All recommendations must work on RTX 4080 Laptop (12 GB VRAM)
 
 ---
 
@@ -238,8 +238,8 @@ ExplainMyXray/
 │   │   ├── medgemma_4b.yaml             # MedGemma 1.0 4B-it model config (fallback)
 │   │   └── chexagent_3b.yaml            # CheXagent-2-3b ensemble config
 │   ├── training/
-│   │   ├── qlora_rtx5080.yaml           # QLoRA config for RTX 5080 12 GB: r=32, α=64, batch=1
-│   │   ├── qlora_rtx5080_dora.yaml      # DoRA variant config for accuracy experiments
+│   │   ├── qlora_rtx4080.yaml           # QLoRA config for RTX 4080 Laptop 12 GB: r=32, α=64, batch=1
+│   │   ├── qlora_rtx4080_dora.yaml      # DoRA variant config for accuracy experiments
 │   │   ├── qlora_colab_t4.yaml          # Fallback config for Colab T4 16 GB
 │   │   └── hyperparameter_search.yaml   # Optuna hyperparameter search space definition
 │   ├── evaluation/
@@ -359,7 +359,7 @@ ExplainMyXray/
 ├── 📁 docs/
 │   ├── architecture.md                  # System architecture documentation with Mermaid diagrams
 │   ├── api.md                          # API endpoint documentation with examples
-│   ├── training_guide.md              # Step-by-step training guide for RTX 5080
+│   ├── training_guide.md              # Step-by-step training guide for RTX 4080 Laptop
 │   ├── evaluation_guide.md            # Evaluation metrics explanation and interpretation
 │   ├── research_notes.md              # Research findings and experiment log
 │   ├── DEEP_RESEARCH_REPORT.md        # This research report
@@ -419,7 +419,7 @@ ExplainMyXray/
 | Tool | Version | Purpose | Replaces | VRAM Impact | Research Backing | Priority |
 |------|---------|---------|----------|-------------|-----------------|----------|
 | **PyTorch** | ≥2.4.0 | Deep learning framework with CUDA, BF16 tensor cores, torch.compile | PyTorch 2.x (current) | None | Required by Transformers v5 (min PyTorch 2.4) | 🔴 MUST |
-| **CUDA Toolkit** | 12.4+ | GPU compute for NVIDIA RTX 5080 Blackwell architecture | Same | None | RTX 5080 requires CUDA 12.x for full SM ≥8.0 support | 🔴 MUST |
+| **CUDA Toolkit** | 12.4+ | GPU compute for NVIDIA RTX 4080 Laptop Ada Lovelace architecture | Same | None | RTX 4080 Laptop requires CUDA 12.x for full SM ≥8.0 support | 🔴 MUST |
 | **cuDNN** | ≥9.0 | Optimized GPU primitives for convolutions, attention | Same | None | BF16 tensor core utilization | 🔴 MUST |
 
 #### 🤗 2. Model Libraries

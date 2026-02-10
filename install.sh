@@ -4,7 +4,7 @@
 # =============================================================
 # Requirements:
 #   - Python 3.10+ (3.11 recommended)
-#   - NVIDIA GPU with ≥12 GB VRAM (RTX 3090/4080/5080+)
+#   - NVIDIA GPU with ≥12 GB VRAM (RTX 3090/4080 Laptop/4080+)
 #   - CUDA 12.1+ and cuDNN installed
 #   - ~10 GB disk for model + dependencies
 # =============================================================

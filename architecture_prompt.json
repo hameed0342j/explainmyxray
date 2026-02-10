@@ -3,7 +3,7 @@
     "title": "ExplainMyXray v2 — Technical Architecture",
     "subtitle": "Chest X-ray Analysis with Disease Localization using Fine-tuned MedGemma-4B",
     "version": "2.0",
-    "environment": "Local — RTX 5080 12 GB VRAM (Windows/Linux, VS Code)",
+    "environment": "Local — RTX 4080 Laptop 12 GB VRAM (Windows/Linux, VS Code)",
     "theme": {
       "background": "linear-gradient(135deg, #0a0f1a 0%, #101d2e 40%, #0b2948 100%)",
       "cardBackground": "rgba(255, 255, 255, 0.04)",
@@ -188,7 +188,7 @@
       "gradient": "linear-gradient(135deg, #f72585, #b5179e)",
       "description": "Fitting a 4B medical VLM into 12 GB VRAM with QLoRA",
       "memoryBudget": {
-        "totalVRAM": "12 GB (RTX 5080)",
+        "totalVRAM": "12 GB (RTX 4080 Laptop)",
         "breakdown": [
           { "component": "Base model (4-bit NF4)", "usage": "~2.5 GB" },
           { "component": "LoRA adapters (bf16)", "usage": "~0.5 GB" },
@@ -223,7 +223,7 @@
           "logoAlt": "⚡",
           "config": "bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_quant_storage=torch.bfloat16",
           "useCase": "Precision for forward/backward passes",
-          "whyUsed": "RTX 5080 (Blackwell, SM ≥8.0) has native BF16 tensor cores. BF16 has 8-bit exponent → no gradient overflow vs FP16's 5-bit exponent",
+          "whyUsed": "RTX 4080 Laptop (Ada Lovelace, SM ≥8.0) has native BF16 tensor cores. BF16 has 8-bit exponent → no gradient overflow vs FP16's 5-bit exponent",
           "v1Comparison": "v1 used FP16 on T4 → occasional loss spikes. v2 uses BF16 → rock-stable training",
           "alternatives": ["FP16 (risk overflow on 4B model)", "FP32 (2× VRAM, no benefit)"]
         },
@@ -240,7 +240,7 @@
           "logoAlt": "🔢",
           "config": "torch.backends.cuda.matmul.allow_tf32 = True",
           "useCase": "Use TensorFloat32 for matrix multiplications",
-          "whyUsed": "3× faster matmuls with ~FP16 accuracy. Free speed on Ampere+/Blackwell",
+          "whyUsed": "3× faster matmuls with ~FP16 accuracy. Free speed on Ampere+/Ada Lovelace",
           "memoryImpact": "None (speed only)"
         },
         {
@@ -476,7 +476,7 @@
       "icon": "🎚️",
       "color": "#7209b7",
       "gradient": "linear-gradient(135deg, #7209b7, #560bad)",
-      "description": "Tuned for ≥95% accuracy on RTX 5080 12 GB VRAM",
+      "description": "Tuned for ≥95% accuracy on RTX 4080 Laptop 12 GB VRAM",
       "targetAccuracy": "≥95%",
       "items": [
         {
@@ -494,7 +494,7 @@
           "effectiveBatch": "1 × 32 = 32",
           "useCase": "Simulate large batch for stable gradients",
           "whyUsed": "Effective batch=32 gives reliable gradient estimates. Larger than v1's 16 → more stable convergence → higher accuracy",
-          "v1Comparison": "v1: effective 32 (4×8 on T4). v2: effective 32 (1×32 on RTX 5080)"
+          "v1Comparison": "v1: effective 32 (4×8 on T4). v2: effective 32 (1×32 on RTX 4080 Laptop)"
         },
         {
           "name": "Learning Rate",
@@ -540,7 +540,7 @@
           "logoAlt": "🎯",
           "config": "bf16=True",
           "useCase": "BFloat16 mixed precision training",
-          "whyUsed": "RTX 5080 has native BF16 tensor cores (SM ≥8.0). BF16 has 8-bit exponent = no gradient overflow. Superior to FP16 for training stability",
+          "whyUsed": "RTX 4080 Laptop has native BF16 tensor cores (SM ≥8.0). BF16 has 8-bit exponent = no gradient overflow. Superior to FP16 for training stability",
           "v1Comparison": "v1: FP16 on T4 → occasional loss spikes. v2: BF16 → perfectly stable"
         },
         {
@@ -738,7 +738,7 @@
       "icon": "🚀",
       "color": "#023e8a",
       "gradient": "linear-gradient(135deg, #023e8a, #0096c7)",
-      "description": "End-to-end setup for RTX 5080 system via VS Code",
+      "description": "End-to-end setup for RTX 4080 Laptop system via VS Code",
       "items": [
         {
           "name": "Install Scripts",
@@ -755,11 +755,11 @@
           "whyUsed": "Native Jupyter notebook support, integrated terminal, TensorBoard extension, Python/Pylance IntelliSense"
         },
         {
-          "name": "Hardware: RTX 5080",
+          "name": "Hardware: RTX 4080 Laptop",
           "logoAlt": "🖥️",
           "specs": {
-            "vram": "12 GB GDDR7",
-            "architecture": "Blackwell",
+            "vram": "12 GB GDDR6",
+            "architecture": "Ada Lovelace",
             "computeCapability": "≥8.0",
             "bf16Support": "Yes (native tensor cores)",
             "tf32Support": "Yes"
@@ -839,7 +839,7 @@
     "localization": "26 anatomical regions mapped",
     "targetAccuracy": "≥95% soft match",
     "trainableParams": "~100M (<2.5%)",
-    "gpu": "RTX 5080 12 GB VRAM",
+    "gpu": "RTX 4080 Laptop 12 GB VRAM",
     "environment": "VS Code + Jupyter (local)"
   },
   "colorPalette": {
@@ -864,10 +864,10 @@
       { "aspect": "Localization", "v1": "None", "v2": "104 locations + visual overlays", "icon": "📍" },
       { "aspect": "Output", "v1": "Template strings", "v2": "Structured FINDINGS/LOCATIONS/IMPRESSION", "icon": "📄" },
       { "aspect": "LoRA", "v1": "r=16, attention only", "v2": "r=32, all-linear + embeddings", "icon": "🎛️" },
-      { "aspect": "Precision", "v1": "FP16 (T4)", "v2": "BF16 (RTX 5080)", "icon": "⚡" },
+      { "aspect": "Precision", "v1": "FP16 (T4)", "v2": "BF16 (RTX 4080 Laptop)", "icon": "⚡" },
       { "aspect": "Trainer", "v1": "Custom loop", "v2": "TRL SFTTrainer (official)", "icon": "🏋️" },
       { "aspect": "Evaluation", "v1": "None during training", "v2": "Every 100 steps + early stopping", "icon": "🎯" },
-      { "aspect": "Hardware", "v1": "Colab T4 16 GB", "v2": "RTX 5080 12 GB (local)", "icon": "🖥️" },
+      { "aspect": "Hardware", "v1": "Colab T4 16 GB", "v2": "RTX 4080 Laptop 12 GB (local)", "icon": "🖥️" },
       { "aspect": "Accuracy", "v1": "Memorized templates", "v2": "Target ≥95% soft match", "icon": "✅" }
     ]
   }

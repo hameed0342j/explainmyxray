@@ -3,7 +3,7 @@
     "title": "ExplainMyXray v3",
     "subtitle": "Research-Enhanced Medical CXR Analysis Architecture",
     "version": "3.0",
-    "environment": "RTX 5080 16 GB / VS Code / Local Training",
+    "environment": "RTX 4080 Laptop 12 GB / VS Code / Local Training",
     "generatedDate": "2026-02-10",
     "researchReport": "DEEP_RESEARCH_REPORT.md",
     "theme": {
@@ -78,7 +78,7 @@
           "logoAlt": "PyTorch Framework",
           "version": "≥2.4.0",
           "useCase": "Core tensor operations, autograd, CUDA integration, BF16 tensor cores, torch.compile",
-          "whyUsed": "Minimum required by Transformers v5. BF16 tensor core support for RTX 5080. expandable_segments for memory management.",
+          "whyUsed": "Minimum required by Transformers v5. BF16 tensor core support for RTX 4080 Laptop. expandable_segments for memory management.",
           "v2Version": "≥2.0",
           "breakingChanges": "Minimum version bump required by Transformers v5"
         },
@@ -247,7 +247,7 @@
       "gradient": "from-cyan-500 to-teal-600",
       "description": "Same NF4 quantization as v2, but forward_masked_logits from TRL v0.27.0 saves ~50% VRAM during forward pass.",
       "memoryBudget": {
-        "totalVRAM": "12 GB (RTX 5080)",
+        "totalVRAM": "12 GB (RTX 4080 Laptop)",
         "breakdown": [
           { "component": "MedGemma 1.5 4B (NF4 4-bit)", "vram": "~2.5 GB", "notes": "Same as v1 — identical architecture" },
           { "component": "LoRA/DoRA Adapters (r=32)", "vram": "~0.1 GB", "notes": "DoRA adds magnitude component, negligible extra" },
@@ -277,7 +277,7 @@
           "name": "BF16 Compute dtype",
           "config": "bnb_4bit_compute_dtype=torch.bfloat16",
           "useCase": "Computation precision for dequantized operations",
-          "whyUsed": "BF16 tensor cores on RTX 5080 (Blackwell). Better dynamic range than FP16."
+          "whyUsed": "BF16 tensor cores on RTX 4080 Laptop (Ada Lovelace). Better dynamic range than FP16."
         },
         {
           "name": "Gradient Checkpointing",
@@ -507,7 +507,7 @@
       "icon": "🎯",
       "color": "#EF4444",
       "gradient": "from-red-500 to-rose-600",
-      "description": "Optimized for RTX 5080 12 GB with forward_masked_logits. DoRA replaces standard LoRA.",
+      "description": "Optimized for RTX 4080 Laptop 12 GB with forward_masked_logits. DoRA replaces standard LoRA.",
       "items": [
         {
           "name": "Batch Size",
@@ -555,7 +555,7 @@
           "name": "Mixed Precision",
           "config": "bf16=True, fp16=False",
           "useCase": "BFloat16 training precision",
-          "whyUsed": "RTX 5080 BF16 tensor cores. Better dynamic range than FP16, no loss scaling needed."
+          "whyUsed": "RTX 4080 Laptop BF16 tensor cores. Better dynamic range than FP16, no loss scaling needed."
         },
         {
           "name": "Gradient Clipping",
@@ -779,8 +779,8 @@
           "whyUsed": "Consistent developer experience across team."
         },
         {
-          "name": "RTX 5080 GPU",
-          "config": "NVIDIA RTX 5080, 12 GB GDDR7, Blackwell architecture",
+          "name": "RTX 4080 Laptop GPU",
+          "config": "NVIDIA RTX 4080 Laptop, 12 GB GDDR6, Ada Lovelace architecture",
           "useCase": "Primary training and inference hardware",
           "whyUsed": "BF16 tensor cores, CUDA 12.4+, SM ≥8.0."
         },
@@ -1176,7 +1176,7 @@
     "quantization": "NF4 4-bit + double quant (BitsAndBytes ≥0.45.0)",
     "fineTuning": "DoRA r=32, α=64, all-linear, ensure_weight_tying=True",
     "trainer": "TRL SFTTrainer with forward_masked_logits=True",
-    "computeDtype": "BF16 (RTX 5080 tensor cores)",
+    "computeDtype": "BF16 (RTX 4080 Laptop tensor cores)",
     "effectiveBatch": "1 × 32 gradient_accumulation = 32",
     "learningRate": "1e-4, cosine with 5% warmup",
     "epochs": "5 (early stopping patience=5)",
@@ -1186,8 +1186,8 @@
     "evaluation": "Soft match ≥95% + RadGraph F1 ≥0.40 + CheXbert F1 ≥0.50 + per-finding P/R/F1",
     "targetAccuracy": "Soft match ≥95%, RadGraph F1 ≥0.40",
     "trainableParams": "~100M (<2.5% of 4B) via DoRA",
-    "gpu": "NVIDIA RTX 5080, 12 GB GDDR7, Blackwell",
-    "environment": "VS Code + local RTX 5080 training",
+    "gpu": "NVIDIA RTX 4080 Laptop, 12 GB GDDR6, Ada Lovelace",
+    "environment": "VS Code + local RTX 4080 Laptop training",
     "serving": "FastAPI + Gradio + Docker",
     "experimentTracking": "Weights & Biases + TensorBoard"
   },
