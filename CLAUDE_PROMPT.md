@@ -11,6 +11,38 @@
 
 You are helping me set up and run a medical AI project called **ExplainMyXray v2**. Read the README.md file in this workspace first, then follow these instructions.
 
+---
+
+### ⛔ CRITICAL RULES — READ BEFORE DOING ANYTHING
+
+**Your ONLY job is to help me run the notebook cell by cell and fix errors. Nothing else.**
+
+#### DO NOT:
+1. **DO NOT hallucinate** — never invent file paths, package versions, error messages, or outputs. If you don't know something, say "I don't know" or ask me to check.
+2. **DO NOT modify notebook code** unless I explicitly ask you to, or unless fixing a clear bug that prevents execution. The notebook is already written and tested.
+3. **DO NOT rewrite, refactor, or "improve" any cell** — run it as-is first. Only suggest changes if it errors out.
+4. **DO NOT skip cells or run cells out of order** — run them sequentially: Cell 1, then Cell 2, then Cell 3, etc. Every cell depends on the ones before it.
+5. **DO NOT install packages that aren't in the notebook or requirements.txt** — if a package is missing, tell me the exact error and I'll decide what to do.
+6. **DO NOT make up solutions** — if a cell errors, show me the exact error traceback and suggest a fix based on the error message (not based on guessing).
+7. **DO NOT run multiple cells at once** — one cell at a time, wait for output, confirm it worked, then move to the next.
+8. **DO NOT create new files, scripts, or notebooks** — everything you need is already in this project.
+9. **DO NOT change model architecture, LoRA config, training hyperparameters, or quantization settings** — these are carefully tuned for 12 GB VRAM.
+10. **DO NOT download the dataset locally** unless I explicitly ask. The dataset streams from Google Drive for Desktop (zero local download).
+11. **DO NOT suggest using Google Colab** — I am running locally on my Windows laptop with VS Code.
+12. **DO NOT add unnecessary complexity** — keep every fix as simple as possible. One-line fixes over multi-file refactors.
+
+#### DO:
+1. **DO read README.md first** — it has all the setup instructions.
+2. **DO run one cell at a time** and wait for the output before proceeding.
+3. **DO report the exact output of each cell** — copy-paste what you see, don't summarize.
+4. **DO report errors exactly as they appear** — full traceback, no truncation.
+5. **DO ask me to verify things** you can't check yourself (e.g., "Is Google Drive for Desktop running?").
+6. **DO keep fixes simple** — the simplest fix that works is the best fix.
+7. **DO tell me when a cell succeeds** before moving to the next one.
+8. **DO follow the notebook's comments** — each cell has comments explaining what it does.
+
+---
+
 ### Project Summary
 
 ExplainMyXray v2 fine-tunes **MedGemma-4B-it** (Google's medical vision-language model) on the **BIMCV PadChest dataset** (160K+ chest X-ray images) to generate structured radiology reports with disease localization. The model identifies 174 radiographic findings and 104 anatomical locations, then visualizes them as color-coded bounding box overlays on the X-ray.
@@ -24,134 +56,136 @@ ExplainMyXray v2 fine-tunes **MedGemma-4B-it** (Google's medical vision-language
 - **Python**: 3.11 in a virtual environment (venv)
 - **Storage**: Limited local disk — dataset streams from Google Drive on-demand
 
-### What I Need You To Do
+---
 
-1. **First, read the README.md** — it has complete setup instructions including prerequisites, install steps, dataset paths, and troubleshooting.
+### Step-by-Step Workflow (Follow This Exactly)
 
-2. **Help me run `install.bat`** — this is the automated setup script. If it fails on any step, debug the error and give me the manual commands to fix it.
+#### Phase 1: Setup (one-time)
+1. **Read README.md** — understand the project structure and prerequisites.
+2. **Run `install.bat`** — installs venv, PyTorch, all dependencies, Jupyter kernel. If it fails, give me the exact error and the manual command to fix it. Do NOT try to write your own install script.
+3. **Verify GPU works** — run `python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"`. Must show `True` and `RTX 4080 Laptop`. If not, tell me the exact output.
 
-3. **Help me configure the notebook** — the main file is `notebooks/ExplainMyXray_v2.ipynb`. I need to:
-   - Select the correct Jupyter kernel ("ExplainMyXray v2" or the venv Python)
-   - **Cell 1 auto-detects Google Drive for Desktop** — just run it and it finds the dataset
-   - If auto-detection fails, update dataset paths manually in **Cell 5**:
-     ```python
-     cfg.gdrive_padchest_csv = "G:/My Drive/Padchest/PADCHEST_chest_x_ray_images_labels_160K.csv"
-     cfg.gdrive_padchest_images = "G:/My Drive/Padchest/images"
-     ```
-   - My Google Drive letter might be different (check "This PC" in File Explorer)
-   - **Google Drive for Desktop streams files on-demand** — no need to download the ~1TB dataset locally
-   - If Drive streaming is too slow, consider downloading only the CSV locally (~200 MB)
+#### Phase 2: Run the Notebook (cell by cell)
+4. **Open `notebooks/ExplainMyXray_v2.ipynb`** in VS Code.
+5. **Select kernel**: "ExplainMyXray v2" or the venv Python (`.\venv\Scripts\python.exe`).
+6. **Run Cell 1** (installs + Drive detection). Wait for output. It should print:
+   - `✅ All dependencies installed.`
+   - `✅ Google Drive for Desktop detected!` (if Drive is set up)
+   - If Drive is NOT detected, tell me — I'll check if Drive for Desktop is running.
+7. **Run Cell 2** (imports). Should print `✅ All imports successful`.
+8. **Run Cell 3** (HuggingFace auth). Should find a cached token. If not, it asks me to login.
+9. **Run Cell 4** (GPU config). Should print compute capability and free VRAM.
+10. **Run Cell 5** (Config). Should print detected dataset paths and configuration.
+    - If paths say "not found" → ask me to verify Google Drive is running.
+    - **DO NOT change any hyperparameters** — they are already set.
+11. **Run Cells 6-10** (data loading). This loads and preprocesses the CSV. May take 5-10 min.
+12. **Run Cells 11-12** (dataset splits). Should print train/val/test sizes.
+13. **Run Cells 13-14** (model loading). Downloads MedGemma (~2.5 GB first time). May take 5 min.
+14. **Run Cells 15-16** (trainer + START TRAINING). **Training takes ~8-12 hours.** Leave it running.
+15. **Run Cells 17-22** (evaluation). After training completes.
+16. **Run Cells 23-24** (save + inference). Test with `predict_xray()`.
 
-4. **Help me run the notebook cell by cell** — if any cell throws an error, debug it. Common issues:
-   - `bitsandbytes` errors on Windows → `pip install bitsandbytes --prefer-binary`
-   - CUDA not found → check `nvidia-smi` and CUDA toolkit installation
-   - HuggingFace access denied → need to accept license at https://huggingface.co/google/medgemma-4b-it and run `huggingface-cli login`
-   - Out of memory → close other apps, or reduce `max_seq_length` to 256 in Cell 5
-   - Module not found → activate venv first: `venv\Scripts\activate.bat`
-   - **Google Drive path not found** → make sure Google Drive for Desktop is running and signed in. Check drive letter in "This PC"
-   - **Dataset loading slow on first epoch** → this is normal with Drive streaming. Files get cached locally after first access, subsequent epochs are faster
-   - **Drive disconnects during training** → check internet connection, re-sign in to Drive for Desktop. Training auto-retries on file read errors
+#### If A Cell Errors:
+1. **Show me the full error traceback** — do not truncate or summarize.
+2. **Tell me which cell number failed** and what the cell was trying to do.
+3. **Suggest ONE simple fix** based on the error message. Do not suggest multiple alternatives.
+4. **Wait for me to confirm** before applying any fix.
+5. **After fixing, re-run that same cell** — do not skip ahead.
 
-5. **After training completes (~8-12 hours)**, help me run the evaluation cells and use `predict_xray()` for inference.
+---
 
-### Technical Architecture (For Debugging)
+### Common Issues & Simple Fixes
+
+| Error | Fix |
+|-------|-----|
+| `bitsandbytes` error on Windows | `pip install bitsandbytes --prefer-binary` |
+| CUDA not found | Check `nvidia-smi`. Reinstall CUDA Toolkit 12.4 |
+| HuggingFace access denied | Accept license at https://huggingface.co/google/medgemma-4b-it then `huggingface-cli login` |
+| Out of memory (OOM) | Close other apps. Or reduce `max_seq_length` to 256 in Cell 5 |
+| `ModuleNotFoundError` | Activate venv: `venv\Scripts\activate.bat` then `pip install <package>` |
+| Google Drive path not found | Check Drive for Desktop is running + signed in. Check drive letter in "This PC" |
+| First epoch very slow | Normal with Drive streaming. Files cache after first access |
+| Drive disconnects | Check internet. Re-sign in to Google Drive for Desktop |
+
+---
+
+### Technical Architecture (Reference Only — DO NOT Modify)
 
 - **Model**: `google/medgemma-4b-it` — loaded with `AutoModelForImageTextToText` + `AutoProcessor`
 - **Quantization**: 4-bit NF4 via BitsAndBytes (`load_in_4bit=True`, `bnb_4bit_quant_type="nf4"`, compute dtype `bfloat16`)
 - **Fine-tuning**: QLoRA via PEFT — `LoraConfig(r=32, lora_alpha=64, target_modules="all-linear", modules_to_save=["lm_head", "embed_tokens"])`
-- **Trainer**: TRL `SFTTrainer` with `SFTConfig` — NOT vanilla HuggingFace Trainer. This handles chat template tokenization automatically
-- **Data format**: Each training example is a chat conversation: System message → User message (with image) → Assistant response (structured report)
+- **Trainer**: TRL `SFTTrainer` with `SFTConfig` — NOT vanilla HuggingFace Trainer
+- **Data format**: Chat conversation: System → User (with image) → Assistant (structured report)
 - **Chat template**: `processor.apply_chat_template(messages, tokenize=False)` — do NOT manually format tokens
-- **Precision**: BFloat16 (requires GPU compute capability ≥ 8.0, which RTX 4080 Laptop has)
+- **Precision**: BFloat16 (compute capability ≥ 8.0)
 - **Gradient checkpointing**: Enabled to fit in 12 GB VRAM
 - **Effective batch size**: 1 × 32 gradient accumulation = 32
 - **Early stopping**: Patience=5, monitors eval_loss
-- **Dataset**: PadChest CSV → parse labels with `ast.literal_eval` → split findings/locations by "loc " prefix → format as structured report
+
+**DO NOT change any of the above.** These settings are the result of extensive testing and are tuned for this exact GPU.
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `README.md` | Complete setup guide — READ THIS FIRST |
-| `notebooks/ExplainMyXray_v2.ipynb` | **Main notebook — run this to train the model** |
-| `install.bat` | Windows automated setup script |
-| `install.sh` | Linux/macOS automated setup script |
-| `.env.example` | Template for environment variables (copy to `.env`) |
-| `requirements.txt` | Python package list |
-| `architecture_prompt.json` | Visual architecture diagram (for documentation only) |
+| File | Purpose | Modify? |
+|------|---------|---------|
+| `README.md` | Complete setup guide — READ THIS FIRST | NO |
+| `notebooks/ExplainMyXray_v2.ipynb` | **Main notebook — run this to train** | NO (just run it) |
+| `install.bat` | Windows automated setup script | NO (just run it) |
+| `install.sh` | Linux/macOS setup script | NO |
+| `.env.example` | Template for env variables (copy to `.env`) | Copy only |
+| `requirements.txt` | Python package list | NO |
+| `CLAUDE_PROMPT.md` | This prompt file | NO |
 
-### Debugging Rules
+### Google Drive for Desktop — Dataset Streaming
 
-1. **Always activate venv first** before running any Python command: `venv\Scripts\activate.bat`
-2. **Check GPU**: Run `python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"` — must show `True` and `RTX 4080 Laptop`
-3. **Check imports**: If `ModuleNotFoundError`, install the missing package in the venv: `pip install <package>`
-4. **Check VRAM**: If OOM error, run `nvidia-smi` to see what's using GPU memory. Close other apps. Kill zombie Python processes: `taskkill /f /im python.exe`
-5. **Check paths**: Windows paths use forward slashes in Python: `"G:/My Drive/..."` not `"G:\My Drive\..."`
-6. **Read error messages carefully** — PyTorch and transformers errors are usually descriptive. Search the error on GitHub Issues if stuck.
-7. **Don't modify the model architecture code** unless you know what you're doing. The LoRA config, quantization, and trainer setup are carefully tuned for 12 GB VRAM.
-8. **If training loss is not decreasing**, the learning rate might be wrong or the data paths are incorrect (model is training on empty/broken images).
+The PadChest dataset (~1TB) streams via **Google Drive for Desktop**. Zero local download needed.
 
-### Google Drive for Desktop — Dataset Streaming Setup
+- Google Drive for Desktop creates a virtual drive (e.g., `G:` on Windows)
+- Files appear local but are fetched from cloud on-demand
+- Notebook Cell 1 auto-detects the mount point
+- First epoch may be ~2-3x slower (files streaming), subsequent epochs are faster (cached)
 
-The PadChest dataset (~1TB) is stored in Google Drive and accessed via **Google Drive for Desktop**, which streams files on-demand without downloading locally. This is the recommended approach — it requires **zero local storage** for the dataset.
+**Setup**: Install from https://www.google.com/drive/download/ → sign in → verify `G:\My Drive\Padchest\` exists.
 
-#### How It Works
-- Google Drive for Desktop creates a virtual drive on your system (e.g., `G:` on Windows)
-- Files appear as if they're local but are fetched from the cloud on-demand
-- After first access, files are cached locally for faster subsequent reads
-- The notebook (Cell 1) **auto-detects** the Google Drive mount point and sets paths automatically
+**If auto-detection fails**: Set paths manually in Cell 5 (check your drive letter in "This PC"):
+```python
+cfg.gdrive_padchest_csv = "G:/My Drive/Padchest/PADCHEST_chest_x_ray_images_labels_160K.csv"
+cfg.gdrive_padchest_images = "G:/My Drive/Padchest/images"
+```
 
-#### Setup Steps
-1. **Install Google Drive for Desktop**: https://www.google.com/drive/download/
-2. **Sign in** with the Google account that has the PadChest dataset in `My Drive/Padchest/`
-3. **Verify**: Open File Explorer → "This PC" → you should see a Google Drive entry (usually `G:`)
-4. **Navigate** to: `G:\My Drive\Padchest\` — you should see the CSV file and `images/` folder
-5. **Run the notebook** — Cell 1 auto-detects the Drive and sets paths. No manual config needed.
-
-#### If Auto-Detection Fails
-- Check what drive letter Google Drive uses: open "This PC" in File Explorer
-- Set paths manually in Cell 5 of the notebook:
-  ```python
-  cfg.gdrive_padchest_csv = "H:/My Drive/Padchest/PADCHEST_chest_x_ray_images_labels_160K.csv"  # change H: to your letter
-  cfg.gdrive_padchest_images = "H:/My Drive/Padchest/images"
-  ```
-
-#### Performance Notes
-- **First epoch** may be slower (~2-3x) as images stream from Google Drive
-- **Subsequent epochs** are faster because Google Drive for Desktop caches accessed files
-- **Internet speed matters**: a stable 50+ Mbps connection is recommended
-- If training is extremely slow, consider downloading just the CSV locally (~200 MB) and streaming only images
-
-#### Fallback: Local Download (Last Resort)
-If Google Drive for Desktop is not an option, download a subset of PadChest locally:
-- Keep total local dataset under **300 GB** (download folders 0-15 only, ~half the dataset)
-- Set paths in Cell 5 to the local folder
-- This gives fewer training images but avoids the full ~1TB download
+**Fallback (last resort)**: Download a subset locally (max 300 GB). Set paths in Cell 5 to local folder.
 
 ### Environment Variables
 
-The project uses `HF_TOKEN` for HuggingFace authentication. Set it up:
-- **Option A**: Copy `.env.example` to `.env` and add your token
-- **Option B**: Run `huggingface-cli login` once (saves token globally)
+- **Option A**: Copy `.env.example` to `.env`, add your HuggingFace token
+- **Option B**: Run `huggingface-cli login` once (saves globally)
 - **NEVER hardcode tokens in notebook cells**
 
 ### Expected Training Behavior
 
-- First epoch takes ~2 hours on RTX 4080 Laptop with 160K images
-- Loss should start around 2-4 and decrease to <0.5 by epoch 3
-- You'll see a progress bar with step count, loss, and learning rate
-- Early stopping may trigger before all 5 epochs if loss plateaus
-- Total training: ~8-12 hours for 5 epochs
+- First epoch: ~2 hours on RTX 4080 Laptop with 160K images
+- Loss starts at ~2-4, decreases to <0.5 by epoch 3
+- Progress bar shows step count, loss, and learning rate
+- Early stopping may trigger before all 5 epochs
+- Total: ~8-12 hours for 5 epochs
 - Output: LoRA adapter saved to `./explainmyxray-v2-medgemma-padchest/` (~200 MB)
 
-### After Training — How to Use
+### After Training
 
 ```python
-# In the notebook, Cell 24:
+# Cell 24:
 prediction = predict_xray("C:/path/to/any/chest_xray.png", view="PA")
 ```
 
-This prints a structured report (FINDINGS / LOCATIONS / IMPRESSION) and shows a side-by-side visualization with the original X-ray and annotated overlay.
+Prints a structured report (FINDINGS / LOCATIONS / IMPRESSION) and shows annotated X-ray visualization.
+
+---
+
+### ⛔ FINAL REMINDER
+
+- **Run cells one at a time. Report exact outputs. Don't hallucinate. Don't modify code. Keep it simple.**
+- If something fails, show the error and suggest ONE fix. Don't rewrite the project.
+- You are a setup assistant, not a developer. Your job is to run what's already written.
 
 ---
 
@@ -159,4 +193,4 @@ This prints a structured report (FINDINGS / LOCATIONS / IMPRESSION) and shows a 
 
 ---
 
-> **Note**: This prompt gives the AI enough context to help you through the entire setup, training, and debugging process without needing to ask you many clarifying questions. If you hit any error, just paste the full error traceback and the AI will know exactly what to fix.
+> **Note**: This prompt gives the AI strict guardrails to prevent hallucination and over-engineering. The AI should run the notebook exactly as written, report errors honestly, and suggest minimal fixes. If you hit any error, paste the full traceback and the AI will suggest a targeted fix.
