@@ -1,0 +1,240 @@
+{
+  "metadata": {
+    "title": "ExplainMyXray v2 — RTX 4080 + 200GB Local PadChest",
+    "subtitle": "Optimized Architecture for Desktop Fine-tuning with Local Data",
+    "version": "2.1-rtx4080-local",
+    "environment": "RTX 4080 Desktop/Laptop — 12 GB VRAM, 200 GB Local PadChest",
+    "analysisDate": "2026-02-17",
+    "analyst": "Brutal Architecture Review",
+    "comparisonBaseline": "T4 (Kaggle/Colab) + 1TB GDrive PadChest"
+  },
+
+  "hardware": {
+    "gpu": {
+      "name": "NVIDIA RTX 4080",
+      "architecture": "Ada Lovelace",
+      "computeCapability": "8.9",
+      "vram": "12 GB GDDR6X (desktop) or 12 GB GDDR6 (laptop)",
+      "memoryBandwidth": "716.8 GB/s (desktop) / 432 GB/s (laptop)",
+      "tensorCores": "76 (4th Gen)",
+      "fp16TFLOPS": "48.7 (desktop) / 33.8 (laptop)",
+      "bf16Support": true,
+      "tf32Support": true,
+      "cudaCores": "9728 (desktop) / 7424 (laptop)",
+      "tdp": "320W (desktop) / 150W (laptop)"
+    },
+    "storage": {
+      "padchestLocal": "200 GB (subset of full 1TB dataset)",
+      "estimatedImages": "~30,000-40,000 images (of 160K total)",
+      "ioAdvantage": "NVMe SSD local read = 3-7 GB/s vs GDrive streaming = 10-50 MB/s",
+      "ioSpeedupFactor": "100-700x faster than Google Drive streaming"
+    }
+  },
+
+  "sections": [
+    {
+      "id": 1,
+      "title": "Core ML Stack",
+      "items": [
+        {
+          "name": "Transformers",
+          "version": ">=4.52.0",
+          "role": "AutoModelForImageTextToText + AutoProcessor for MedGemma-4B-it",
+          "note": "v5.x available but NOT recommended for stability on friend's first run"
+        },
+        {
+          "name": "TRL",
+          "version": ">=0.17.0",
+          "role": "SFTTrainer — official MedGemma fine-tuning method",
+          "note": "v0.27.2 has forward_masked_logits (50% VRAM savings) but requires Transformers v5"
+        },
+        {
+          "name": "PEFT",
+          "version": ">=0.15.0",
+          "role": "QLoRA via LoraConfig — trains <1% of parameters"
+        },
+        {
+          "name": "BitsAndBytes",
+          "version": ">=0.45.0",
+          "role": "4-bit NF4 quantization + paged_adamw_8bit optimizer"
+        },
+        {
+          "name": "Accelerate",
+          "version": ">=1.5.0",
+          "role": "device_map='auto' for single-GPU model placement"
+        },
+        {
+          "name": "PyTorch",
+          "version": ">=2.0 + CUDA 12.x",
+          "role": "BF16 tensor cores + TF32 matmul + expandable_segments"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Model Configuration",
+      "model": {
+        "name": "google/medgemma-4b-it",
+        "parameters": "4B",
+        "visionEncoder": "Medical SigLIP (896x896 native, CXR pre-trained)",
+        "decoder": "Gemma 3 (4B, 128K context, GQA)",
+        "quantization": "NF4 4-bit + double quantization",
+        "computeDtype": "bfloat16",
+        "vramFootprint": "~2.5 GB quantized"
+      }
+    },
+    {
+      "id": 3,
+      "title": "LoRA Configuration",
+      "config": {
+        "r": 64,
+        "alpha": 128,
+        "dropout": 0.05,
+        "targetModules": "all-linear",
+        "modulesToSave": ["lm_head", "embed_tokens"],
+        "taskType": "CAUSAL_LM",
+        "trainableParams": "~2-3% of 4B",
+        "adapterSize": "~200 MB"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Training Configuration",
+      "config": {
+        "epochs": 8,
+        "batchSize": 1,
+        "gradientAccumulation": 16,
+        "effectiveBatch": 16,
+        "learningRate": 5e-5,
+        "scheduler": "cosine_with_restarts",
+        "warmupRatio": 0.1,
+        "maxGradNorm": 0.3,
+        "optimizer": "paged_adamw_8bit",
+        "precision": "bf16",
+        "gradientCheckpointing": true,
+        "maxSeqLength": 768,
+        "labelSmoothing": 0.05,
+        "earlyStoppingPatience": 5,
+        "dataloaderWorkers": 4
+      }
+    },
+    {
+      "id": 5,
+      "title": "VRAM Budget (12 GB)",
+      "breakdown": [
+        { "component": "MedGemma 4B (NF4)", "vram": "2.5 GB" },
+        { "component": "LoRA Adapters (r=64)", "vram": "0.15 GB" },
+        { "component": "Optimizer States (paged_adamw_8bit)", "vram": "1.0 GB" },
+        { "component": "Activations + Gradients (grad ckpt ON)", "vram": "2.5 GB" },
+        { "component": "Forward Pass Logits", "vram": "0.8 GB" },
+        { "component": "CUDA Overhead + Buffers", "vram": "1.0 GB" },
+        { "component": "Image Batch (512x512 RGB)", "vram": "0.05 GB" }
+      ],
+      "totalUsed": "~8.0 GB",
+      "headroom": "~4.0 GB",
+      "verdict": "SAFE — no OOM risk with batch_size=1"
+    },
+    {
+      "id": 6,
+      "title": "Data Pipeline",
+      "preprocessing": {
+        "stages": [
+          "16-bit I;16 → 8-bit (percentile 1st/99th normalization)",
+          "Auto-crop dark edges (threshold=0.05, 33% of PadChest has artifacts)",
+          "Pad to square (aspect ratios 0.8-1.22)",
+          "LANCZOS resize to 512x512",
+          "CLAHE (clipLimit=2.0, gridSize=8x8)",
+          "Sharpen 1.2x",
+          "Convert to RGB (for SigLIP encoder)"
+        ],
+        "inputImageSize": "512x512",
+        "nativeSigLIPSize": "896x896 (model resizes internally)"
+      },
+      "splits": {
+        "train": 0.90,
+        "validation": 0.05,
+        "test": 0.05,
+        "curriculumLearning": true,
+        "difficultyMetric": "finding_count * 2 + location_count + rarity_bonus"
+      }
+    },
+    {
+      "id": 7,
+      "title": "Prompt Engineering",
+      "systemPrompt": "Expert board-certified radiologist AI analyzing PadChest CXR",
+      "outputFormat": {
+        "sections": ["FINDINGS", "LOCATIONS", "IMPRESSION"],
+        "findingsFormat": "- Finding (anatomical location)",
+        "normalCase": "No significant abnormalities detected"
+      }
+    },
+    {
+      "id": 8,
+      "title": "Evaluation",
+      "metrics": [
+        "Exact match accuracy",
+        "Soft match accuracy (>= 50% overlap)",
+        "Micro precision / recall / F1",
+        "Per-finding accuracy (top 20 findings)"
+      ],
+      "targetSoftMatch": ">= 95%"
+    }
+  ],
+
+  "criticalIssues": [
+    {
+      "severity": "HIGH",
+      "issue": "200 GB ≠ full PadChest — only ~25-30% of 160K images",
+      "impact": "Model sees 30-40K images instead of 160K. Rare findings (174 categories) will be severely underrepresented. Long-tail distribution becomes cliff.",
+      "fix": "MUST filter CSV to only rows where images exist locally. Current code does this (image_exists check) but 8 epochs on 30K is NOT equivalent to 8 epochs on 160K."
+    },
+    {
+      "severity": "HIGH",
+      "issue": "Image resolution downscaled: 512x512 vs SigLIP native 896x896",
+      "impact": "SigLIP encoder was pre-trained on 896x896. Feeding 512x512 loses ~67% of pixel information. The processor resizes internally but quality is already lost.",
+      "fix": "Change cfg.image_size to 896. VRAM cost is minimal because SigLIP handles its own resize. Only disk I/O and preprocessing CPU time increase."
+    },
+    {
+      "severity": "MEDIUM",
+      "issue": "Curriculum learning on partial dataset may over-represent easy cases",
+      "impact": "Sorting by difficulty then taking 90% for train means test set is ALL hard cases. Validation metrics will be artificially pessimistic.",
+      "fix": "Either disable curriculum (shuffle randomly) or split FIRST then sort within train split only."
+    },
+    {
+      "severity": "MEDIUM",
+      "issue": "Label masking in collate_fn is naive",
+      "impact": "labels[labels == pid] = -100 masks ALL pad tokens but doesn't mask the system/user prompt tokens. Model trains on predicting the prompt tokens too, wasting capacity.",
+      "fix": "Use DataCollatorForCompletionOnlyLM from TRL, or manually find the assistant response start token and mask everything before it."
+    },
+    {
+      "severity": "MEDIUM",
+      "issue": "No data augmentation for medical images",
+      "impact": "With only 30-40K images, overfitting risk is HIGH. No horizontal flip, rotation, brightness jitter, or elastic deformation.",
+      "fix": "Add conservative augmentations: small rotation (±5°), slight brightness/contrast jitter. DO NOT horizontal flip (laterality matters in CXR)."
+    },
+    {
+      "severity": "LOW",
+      "issue": "build_assistant_response pairs ALL locations with each finding",
+      "impact": "If findings=[cardiomegaly, pneumothorax] and locations=[right lung, cardiac], report says 'Cardiomegaly (right lung, cardiac)' and 'Pneumothorax (right lung, cardiac)' — location attribution is wrong.",
+      "fix": "Need finding-to-location mapping from LabelsLocalizationsBySentence column."
+    },
+    {
+      "severity": "LOW",
+      "issue": "max_seq_length=768 may truncate complex multi-finding reports",
+      "impact": "Reports with 5+ findings + locations + impression can exceed 768 tokens. Truncated labels = incomplete training signal.",
+      "fix": "Measure actual sequence length distribution. Consider 1024 if VRAM allows."
+    }
+  ],
+
+  "200gbDataStrategy": {
+    "estimatedImageCount": "30,000-40,000 (of 160K)",
+    "expectedFindings": "~100-120 of 174 unique findings (rare ones missing entirely)",
+    "recommendation": "Focus training on findings that appear >=10 times in available data. Filter out ultra-rare findings to avoid noise.",
+    "epochsNeeded": "Can train more epochs (10-12) since dataset is smaller — faster per-epoch time with local NVMe",
+    "expectedTrainingTime": {
+      "perEpoch": "~30-45 min (local NVMe) vs ~2-3 hours (GDrive streaming)",
+      "total8Epochs": "~4-6 hours vs ~16-24 hours on GDrive",
+      "speedup": "4-5x faster due to local I/O"
+    }
+  }
+}
